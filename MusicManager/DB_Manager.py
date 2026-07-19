@@ -1,14 +1,13 @@
 import sqlite3
-
-DB_PATH = "../DB.db"
+from DB import DB_PATH
 
 class DB_Manager:
     def __init__(self):
-        self.db = sqlite3.connect(DB_PATH)
+        self.sql = sqlite3.connect(DB_PATH)
         self.create_tables()
 
     def create_tables(self):
-        self.db.executescript("""
+        self.sql.executescript("""
         CREATE TABLE IF NOT EXISTS tracks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL,
@@ -20,7 +19,7 @@ class DB_Manager:
         );
         """)
 
-        self.db.commit()
+        self.sql.commit()
 
     def track_exists(
             self,
@@ -29,7 +28,7 @@ class DB_Manager:
             album,
             year
     ):
-        cursor = self.db.cursor()
+        cursor = self.sql.cursor()
 
         cursor.execute("""
         SELECT id FROM tracks
@@ -56,7 +55,7 @@ class DB_Manager:
         ):
             return False
 
-        self.db.execute("""
+        self.sql.execute("""
         INSERT INTO tracks
         (
             title,
@@ -74,6 +73,6 @@ class DB_Manager:
             data["file_path"]
         ))
 
-        self.db.commit()
+        self.sql.commit()
 
         return True
