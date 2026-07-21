@@ -1,12 +1,26 @@
 import sqlite3
-DB_PATH = "../DB.db"
 
-class Database:
-    def __init__(self):
-        self.sql = sqlite3.connect("DB.db")
+class Database: # Синглтон для подключения к БД
+    instance, connection = None, None
+
+    def __new__(cls):
+        if cls.instance in None:
+            cls.instance = super().__new__(cls)
+        return cls.instance
+
+    def sql_connect(self):
+        if self.connection in None:
+            self.sql = sqlite3.connect("DB.db")
+        return self.connection
+
+    def close_sql_connection(self):
+        if self.connection:
+            self.connection.close()
+            self.connection = None
+
 
 if __name__ == "__main__":
-    sql = sqlite3.connect("DB.db")
+    sql = sqlite3.connect("DB.db") # Тута отдельное подключение
     cursor = sql.cursor()
 
     cursor.execute("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name;")

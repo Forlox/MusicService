@@ -1,9 +1,8 @@
-from DB import DB_PATH
-import sqlite3
+from Database import Database
 
 class Playlist:
     def __init__(self):
-        self.sql = sqlite3.connect(DB_PATH)
+        self.sql = Database.sql_connect()
         self.create_sql_tables()
 
     def create_sql_tables(self):
