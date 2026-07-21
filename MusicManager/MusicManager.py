@@ -1,8 +1,9 @@
 from FileManager import FileManager
+from Database import Database
 
 class MusicManager:
     def __init__(self):
-        self.db = DB_Manager()
+        self.db = Music_DB_Manager()
         self.file_manager = FileManager()
 
     def run(self):
@@ -16,10 +17,9 @@ class MusicManager:
                 print(f"Уже существует: {track['title']} | {track['author']} | {track['album']} | {track['year']}")
 
 
-from Database import Database
-class DB_Manager:
+class Music_DB_Manager:
     def __init__(self):
-        self.sql = Database.sql_connect()
+        self.sql = Database().sql_connect()
         self.create_sql_tables()
 
     def create_sql_tables(self):
@@ -34,7 +34,6 @@ class DB_Manager:
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
         """)
-
         self.sql.commit()
 
     def track_exists(self, title, author, album, year):
@@ -46,7 +45,6 @@ class DB_Manager:
         AND album IS ?
         AND year IS ?
         """, (title, author, album, year))
-
         return cursor.fetchone() is not None
 
     def add_track(self, data):
@@ -57,9 +55,7 @@ class DB_Manager:
         INSERT INTO tracks (title, author, album, year, file_path)
         VALUES (?, ?, ?, ?, ?)
         """, (data["title"], data["author"], data["album"], data["year"], data["file_path"]))
-
         self.sql.commit()
-
         return True
 
 

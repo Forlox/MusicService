@@ -1,23 +1,25 @@
-import sqlite3
+import sqlite3, os
 
 class Database: # Синглтон для подключения к БД
     instance, connection = None, None
 
     def __new__(cls):
-        if cls.instance in None:
+        if cls.instance is None:
             cls.instance = super().__new__(cls)
         return cls.instance
 
     def sql_connect(self):
-        if self.connection in None:
-            self.sql = sqlite3.connect("DB.db")
+        if self.connection is None:
+            # Чтоб другие классы видели БД
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            db_path = os.path.join(base_dir, "DB.db")
+            self.connection = sqlite3.connect(db_path)
         return self.connection
 
-    def close_sql_connection(self):
+    def close_connection(self):
         if self.connection:
             self.connection.close()
             self.connection = None
-
 
 if __name__ == "__main__":
     sql = sqlite3.connect("DB.db") # Тута отдельное подключение

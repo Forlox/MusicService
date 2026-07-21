@@ -3,7 +3,7 @@ from Database import Database
 
 class Users:
     def __init__(self):
-        self.sql = Database.sql_connect()
+        self.sql = Database().sql_connect()
         self.create_sql_tables()
 
     def create_sql_tables(self):
