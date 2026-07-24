@@ -14,6 +14,9 @@ class Database: # Синглтон для подключения к БД
             base_dir = os.path.dirname(os.path.abspath(__file__))
             db_path = os.path.join(base_dir, "DB.db")
             self.connection = sqlite3.connect(db_path)
+
+            self.connection.row_factory = sqlite3.Row # вайбкод: SQLite должен возвращать sqlite3.Row, а не обычный кортеж.
+            self.connection.execute("PRAGMA foreign_keys = ON") # вайбкод: без этой настройки SQLite не применяет ON DELETE CASCADE.
         return self.connection
 
     def close_connection(self):
@@ -48,8 +51,3 @@ if __name__ == "__main__":
         except Exception as e:
             print("Ошибка:", e)
     sql.close()
-
-    # SELECT title, author FROM tracks;
-    # SELECT * FROM tracks WHERE author = 'Ария';
-    # DELETE FROM tracks WHERE id = 1;
-    # UPDATE tracks SET title = 'New name' WHERE id = 1;

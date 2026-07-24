@@ -50,6 +50,10 @@ class Playlist:
         );
         """)
 
+        columns = {row["name"] for row in self.sql.execute("PRAGMA table_info(playlists)")}
+        if "creator_id" not in columns:
+            self.sql.execute("ALTER TABLE playlists ADD COLUMN creator_id INTEGER")
+
         self.sql.commit()
 
     def create(self, name, track_ids, creator_id=None):

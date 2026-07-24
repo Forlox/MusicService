@@ -2,8 +2,7 @@ from pathlib import Path
 import mutagen, shutil, time
 
 EXTENSIONS = {'.mp3', '.flac', '.wav'}
-MUSIC_DIR = Path("../Music")
-
+MUSIC_DIR = Path(__file__).resolve().parents[1] / "Music"
 
 def scan(folder):
     files = []
@@ -57,8 +56,10 @@ class FileManager:
         folder.mkdir(parents=True, exist_ok=True)
 
         new_path = folder / file.name
-        if file != new_path:
+        if file != new_path and not new_path.exists():
             shutil.move(file, new_path)
+        elif file != new_path: # не перезаписываем другой трек с тем же именем.
+            new_path = file
 
         self.save(data, new_path, author, album)
 

@@ -51,7 +51,7 @@ class Queue:
         cursor.execute("SELECT id FROM playback_queue WHERE device_id = ?", (device_id,))
         queue_id = cursor.fetchone()[0]
 
-        if track_ids:
+        if track_ids is not None: # is not None - пустой список должен очищать очередь
             self.clear(queue_id)
             for position, track_id in enumerate(track_ids):
                 cursor.execute("""
@@ -153,6 +153,13 @@ class Queue:
         self.sql.execute("""
         DELETE FROM queue_tracks
         WHERE queue_id = ?
+        """, (queue_id,))
+
+        # После очистки current_track_id не может ссылаться на трек, которого больше нет в очереди.
+        self.sql.execute("""
+        UPDATE playback_queue
+        SET current_track_id = NULL
+        WHERE id = ?
         """, (queue_id,))
 
 
