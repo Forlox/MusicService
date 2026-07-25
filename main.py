@@ -17,7 +17,7 @@ def initialize_database():
 
 def main():
     initialize_database()
-    MusicManager.MusicManager().run()
+    MusicManager.MusicManager().organize_files()
 
 if __name__ == "__main__":
     main()

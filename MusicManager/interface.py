@@ -1,4 +1,5 @@
 from Database import Database
+from MusicManager import MusicManager
 
 sql = Database().sql_connect()
 
@@ -15,7 +16,7 @@ def get_track_by_id(id):
 
 def get_tracks_by_album(album_name, author=None):
     cursor = sql.cursor()
-    if author == None:
+    if author is None:
         cursor.execute("""
         SELECT * FROM tracks WHERE album = ? ORDER BY title
         """, (album_name, ))
@@ -77,12 +78,23 @@ def search_tracks(query):
     cursor.execute(query_sql, params)
     return cursor.fetchall()
 
+def organize_files():
+    """Файлы музыки будут автоматом организованы в правильную папку и указаны в БД"""
+    manager = MusicManager()
+    manager.organize_new_files(printLogs=True)
+
+def organize_single_file(file):
+    """Один конкретный файл организует по папкам и добавляет в БД"""
+    manager = MusicManager()
+    return manager.organize_single_file(file, printLogs=True)
 
 if __name__ == "__main__":
-    results = search_tracks("Океан")
+    results = ""
 
     try:
         if results:
             for row in results:
                 print(dict(row))
     except TypeError: print(dict(results))
+
+    result = organize_single_file("/home/chuga/PycharmProjects/MusicService/Music/1 Fallacy YonKaGor.wav")

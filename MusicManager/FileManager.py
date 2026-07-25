@@ -25,6 +25,7 @@ def normalize_author(author):
     return author.strip()
 
 class FileManager:
+    EXTENSIONS = EXTENSIONS  # Нужно, не трогать
     def __init__(self):
         self.tracks = []
 
@@ -58,20 +59,14 @@ class FileManager:
         new_path = folder / file.name
         if file != new_path and not new_path.exists():
             shutil.move(file, new_path)
-        elif file != new_path: # не перезаписываем другой трек с тем же именем.
+        elif file != new_path:  # не перезаписываем другой трек с тем же именем.
             new_path = file
 
         self.tracks.append({
             "title": data.get("title", ["Unknown"])[0],
             "author": author,
             "album": album,
-            "year": data.get("date",[None])[0],
+            "year": data.get("date", [None])[0],
             "length": round(data.info.length),
             "file_path": str(new_path)
         })
-
-if __name__ == "__main__":
-    start_time = time.time()
-    FileManager().run()
-    end_time = time.time()
-    print(f"\nВыполнено за {round(end_time-start_time, 2)} сек")

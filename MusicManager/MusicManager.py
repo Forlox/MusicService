@@ -1,4 +1,4 @@
-from MusicManager.FileManager import FileManager
+from FileManager import FileManager
 from Database import Database
 
 class MusicManager:
@@ -6,7 +6,7 @@ class MusicManager:
         self.db = Music_DB_Manager()
         self.file_manager = FileManager()
 
-    def run(self, printLogs=False):
+    def organize_files(self, printLogs=False):
         self.file_manager.run()
 
         for track in self.file_manager.tracks:
@@ -16,6 +16,44 @@ class MusicManager:
                     print(f"Добавлен в БД: {track['title']} | {track['author']} | {track['album']} | {track['year']} | {track['length']} сек")
                 else:
                     print(f"Уже существует: {track['title']} | {track['author']} | {track['album']} | {track['year']} | {track['length']} сек")
+
+    def organize_single_file(self, file_path, printLogs=False):
+        from pathlib import Path
+        file_path = Path(file_path)
+
+        # Проверяем, что файл существует
+        if not file_path.exists():
+            if printLogs:
+                print(f"Файл не найден: {file_path}")
+            return False
+
+        # Проверяем расширение файла
+        if file_path.suffix.lower() not in FileManager.EXTENSIONS:
+            if printLogs:
+                print(f"Неподдерживаемый формат файла: {file_path.suffix}")
+            return False
+
+        # Обрабатываем файл через FileManager
+        self.file_manager.process(file_path)
+
+        # Добавляем обработанный трек в БД
+        if self.file_manager.tracks:
+            track = self.file_manager.tracks[-1]  # Последний добавленный трек
+            add = self.db.add_track(track)
+
+            if printLogs:
+                if add:
+                    print(
+                        f"Добавлен в БД: {track['title']} | {track['author']} | {track['album']} | {track['year']} | {track['length']} сек")
+                else:
+                    print(
+                        f"Уже существует: {track['title']} | {track['author']} | {track['album']} | {track['year']} | {track['length']} сек")
+
+            return add
+        else:
+            if printLogs:
+                print(f"Не удалось обработать файл: {file_path}")
+            return False
 
 
 class Music_DB_Manager:
@@ -68,4 +106,4 @@ class Music_DB_Manager:
 
 if __name__ == "__main__":
     manager = MusicManager()
-    manager.run()
+    manager.organize_files()
