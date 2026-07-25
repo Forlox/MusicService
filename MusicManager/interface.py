@@ -78,23 +78,26 @@ def search_tracks(query):
     cursor.execute(query_sql, params)
     return cursor.fetchall()
 
-def organize_files():
+def organize_files(printLogs=False):
     """Файлы музыки будут автоматом организованы в правильную папку и указаны в БД"""
     manager = MusicManager()
-    manager.organize_new_files(printLogs=True)
+    manager.organize_files(printLogs)
 
-def organize_single_file(file):
+def organize_single_file(file, printLogs=False):
     """Один конкретный файл организует по папкам и добавляет в БД"""
     manager = MusicManager()
-    return manager.organize_single_file(file, printLogs=True)
+    return manager.organize_single_file(file, printLogs)
+
+def delete_track_by_id(track_id, print_logs=True):
+    manager = MusicManager()
+    return manager.delete_track(track_id, print_logs)
 
 if __name__ == "__main__":
-    results = ""
+    results = get_track_by_id(35)
 
     try:
         if results:
             for row in results:
                 print(dict(row))
+        else: print(results)
     except TypeError: print(dict(results))
-
-    result = organize_single_file("/home/chuga/PycharmProjects/MusicService/Music/1 Fallacy YonKaGor.wav")

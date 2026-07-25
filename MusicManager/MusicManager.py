@@ -1,5 +1,7 @@
 from FileManager import FileManager
 from Database import Database
+from pathlib import Path
+import os
 
 class MusicManager:
     def __init__(self):
@@ -53,6 +55,48 @@ class MusicManager:
         else:
             if printLogs:
                 print(f"Не удалось обработать файл: {file_path}")
+            return False
+
+    def delete_track(self, track_id, printLogs=False):
+        """ Возвращает True - удален файл, False - не удален """
+        try:
+            cursor = self.db.sql.cursor()
+            cursor.execute("SELECT file_path, title, author FROM tracks WHERE id = ?", (track_id,))
+            track_data = cursor.fetchone()
+
+            if not track_data:
+                if printLogs:
+                    print(f"Трек с ID {track_id} не найден в базе данных")
+                return False
+
+            file_path = track_data[0]
+            title = track_data[1]
+            author = track_data[2]
+
+            if file_path:
+                file_path_obj = Path(file_path)
+                if file_path_obj.exists():
+                    try:
+                        os.remove(file_path_obj)
+                        if printLogs:
+                            print(f"Удален файл: {file_path}")
+                    except (OSError, PermissionError) as e:
+                        if printLogs:
+                            print(f"Ошибка при удалении файла {file_path}: {e}")
+                        return False
+                else:
+                    if printLogs:
+                        print(f"Файл не найден на диске: {file_path}")
+
+            cursor.execute("DELETE FROM tracks WHERE id = ?", (track_id,))
+            self.db.sql.commit()
+
+            if printLogs:
+                print(f"Трек '{title}' | {author} (ID: {track_id}) успешно удален")
+            return True
+        except Exception as e:
+            if printLogs:
+                print(f"Ошибка при удалении трека: {e}")
             return False
 
 
