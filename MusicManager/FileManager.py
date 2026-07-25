@@ -61,18 +61,14 @@ class FileManager:
         elif file != new_path: # не перезаписываем другой трек с тем же именем.
             new_path = file
 
-        self.save(data, new_path, author, album)
-
         self.tracks.append({
             "title": data.get("title", ["Unknown"])[0],
             "author": author,
             "album": album,
             "year": data.get("date",[None])[0],
+            "length": round(data.info.length),
             "file_path": str(new_path)
         })
-
-    def save(self, data, path, author, album):
-        print(f"{data.get('title', ['Unknown'])[0]} | {author} | {album or 'Нет'} | {path}")
 
 if __name__ == "__main__":
     start_time = time.time()

@@ -1,4 +1,4 @@
-from FileManager import FileManager
+from MusicManager.FileManager import FileManager
 from Database import Database
 
 class MusicManager:
@@ -6,15 +6,16 @@ class MusicManager:
         self.db = Music_DB_Manager()
         self.file_manager = FileManager()
 
-    def run(self):
+    def run(self, printLogs=False):
         self.file_manager.run()
 
         for track in self.file_manager.tracks:
             add = self.db.add_track(track)
-            if add:
-                print(f"Добавлен в БД: {track['title']} | {track['author']} | {track['album']} | {track['year']}")
-            else:
-                print(f"Уже существует: {track['title']} | {track['author']} | {track['album']} | {track['year']}")
+            if printLogs:
+                if add:
+                    print(f"Добавлен в БД: {track['title']} | {track['author']} | {track['album']} | {track['year']} | {track['length']} сек")
+                else:
+                    print(f"Уже существует: {track['title']} | {track['author']} | {track['album']} | {track['year']} | {track['length']} сек")
 
 
 class Music_DB_Manager:
@@ -31,7 +32,8 @@ class Music_DB_Manager:
             album TEXT,
             year TEXT,
             file_path TEXT NOT NULL UNIQUE,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            length INTEGER  -- длина в секундах
         );
         """)
         self.sql.commit()
@@ -49,12 +51,17 @@ class Music_DB_Manager:
 
     def add_track(self, data):
         if self.track_exists(data["title"], data["author"], data["album"], data["year"]):
+            self.sql.execute("""
+            UPDATE tracks SET length = ?
+            WHERE title = ? AND author = ? AND album IS ? AND year IS ?
+            """, (data["length"], data["title"], data["author"], data["album"], data["year"]))
+            self.sql.commit()
             return False
 
         self.sql.execute("""
-        INSERT INTO tracks (title, author, album, year, file_path)
-        VALUES (?, ?, ?, ?, ?)
-        """, (data["title"], data["author"], data["album"], data["year"], data["file_path"]))
+        INSERT INTO tracks (title, author, album, year, file_path, length)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """, (data["title"], data["author"], data["album"], data["year"], data["file_path"], data["length"]))
         self.sql.commit()
         return True
 

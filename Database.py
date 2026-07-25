@@ -24,7 +24,7 @@ class Database: # Синглтон для подключения к БД
             self.connection.close()
             self.connection = None
 
-if __name__ == "__main__":
+def sql_console():
     sql = sqlite3.connect("DB.db") # Тута отдельное подключение
     cursor = sql.cursor()
 
@@ -51,3 +51,6 @@ if __name__ == "__main__":
         except Exception as e:
             print("Ошибка:", e)
     sql.close()
+
+if __name__ == "__main__":
+    sql_console()
