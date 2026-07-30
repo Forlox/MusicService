@@ -4,15 +4,14 @@ from MusicManager import MusicManager
 def sql():
     return Database().sql_connect()
 
-def _normalise_track(track_dict):
-    keys = ['id', 'title', 'author', 'album', 'year']
-    return {key: track_dict[key] for key in keys}
-
-def get_track_by_id(id):
+def get_track_by_id(id, normalise=True):
     cursor = sql().cursor()
-    cursor.execute("""
-    SELECT * FROM tracks WHERE id = ?
-    """, (id,))
+    if normalise:
+        cursor.execute("""
+        SELECT id, title, author, album, year FROM tracks WHERE id = ?
+        """, (id,))
+    else:
+        cursor.execute("SELECT * FROM tracks WHERE id = ?", (id,))
     row = cursor.fetchone()
     return dict(row) if row else None
 
@@ -20,18 +19,18 @@ def get_tracks_by_album(album_name, author=None):
     cursor = sql().cursor()
     if author is None:
         cursor.execute("""
-        SELECT * FROM tracks WHERE album = ? ORDER BY title
+        SELECT id, title, author, album, year FROM tracks WHERE album = ? ORDER BY title
         """, (album_name, ))
     else:
         cursor.execute("""
-        SELECT * FROM tracks WHERE album = ? AND author = ? ORDER BY title
+        SELECT id, title, author, album, year FROM tracks WHERE album = ? AND author = ? ORDER BY title
         """, (album_name, author, ))
     return [dict(row) for row in cursor.fetchall()]
 
 def get_tracks_by_author(author):
     cursor = sql().cursor()
     cursor.execute("""
-    SELECT * FROM tracks WHERE author = ? ORDER BY title
+    SELECT id, title, author, album, year FROM tracks WHERE author = ? ORDER BY title
     """, (author,))
     return [dict(row) for row in cursor.fetchall()]
 
@@ -70,7 +69,7 @@ def search_tracks(query):
 
     substrings = ' AND '.join(conditions)
     query_sql = f"""
-    SELECT id, title, author, album, year, length
+    SELECT id, title, author, album, year
     FROM tracks
     WHERE {substrings}
     ORDER BY title

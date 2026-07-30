@@ -13,7 +13,7 @@ class Database: # Синглтон для подключения к БД
             # Чтоб другие классы видели БД
             base_dir = os.path.dirname(os.path.abspath(__file__))
             db_path = os.path.join(base_dir, "DB.db")
-            self.connection = sqlite3.connect(db_path)
+            self.connection = sqlite3.connect(db_path, check_same_thread=False) # Синглтон лишний, надо под фастапи подстраиваться
 
             self.connection.row_factory = sqlite3.Row # вайбкод: SQLite должен возвращать sqlite3.Row, а не обычный кортеж.
             self.connection.execute("PRAGMA foreign_keys = ON") # вайбкод: без этой настройки SQLite не применяет ON DELETE CASCADE.

@@ -1,4 +1,4 @@
-from FileManager import FileManager
+from MusicManager.FileManager import FileManager
 from Database import Database
 from pathlib import Path
 import os
@@ -19,11 +19,10 @@ class MusicManager:
                 else:
                     print(f"Уже существует: {track['title']} | {track['author']} | {track['album']} | {track['year']} | {track['length']} сек")
 
-    def organize_single_file(self, file_path, printLogs=False):
+    def add_music_file(self, file_path, printLogs=False):
         from pathlib import Path
         file_path = Path(file_path)
 
-        # Проверяем, что файл существует
         if not file_path.exists():
             if printLogs:
                 print(f"Файл не найден: {file_path}")
@@ -35,10 +34,8 @@ class MusicManager:
                 print(f"Неподдерживаемый формат файла: {file_path.suffix}")
             return False
 
-        # Обрабатываем файл через FileManager
         self.file_manager.process(file_path)
 
-        # Добавляем обработанный трек в БД
         if self.file_manager.tracks:
             track = self.file_manager.tracks[-1]  # Последний добавленный трек
             add = self.db.add_track(track)

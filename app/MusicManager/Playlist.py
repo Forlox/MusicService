@@ -79,3 +79,6 @@ class Playlist:
 
         self.sql.commit()
         return playlist_id
+
+if __name__ == "__main__":
+    Playlist().create("MyPlaylist", [1, 3])
