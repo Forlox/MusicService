@@ -1,0 +1,141 @@
+from typing import Optional, Dict, Any
+from fastapi import HTTPException, status
+from Users.UserManager import UserManager
+
+user_manager = UserManager()
+
+def get_current_user_info(current_user: dict) -> dict:
+    """Возвращает информацию о текущем авторизованном пользователе."""
+    try:
+        return user_manager.get_user(current_user["sub"])
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting user info: {str(e)}")
+
+
+def update_user(user_id: str, current_user: dict,
+                username: Optional[str] = None,
+                email: Optional[str] = None,
+                first_name: Optional[str] = None,
+                last_name: Optional[str] = None,
+                enabled: Optional[bool] = None) -> dict:
+    """
+    Обновляет данные пользователя. Если текущий пользователь не админ,
+    он может обновлять только свой профиль (user_id должен совпадать с sub).
+    """
+    # Проверка прав
+    if current_user.get("sub") != user_id:
+        roles = current_user.get("realm_access", {}).get("roles", [])
+        if "admin" not in roles:
+            raise HTTPException(status_code=403, detail="Not enough permissions to update this user")
+
+    # Собираем обновления
+    updates = {}
+    if username is not None:
+        updates["username"] = username
+    if email is not None:
+        updates["email"] = email
+    if first_name is not None:
+        updates["firstName"] = first_name
+    if last_name is not None:
+        updates["lastName"] = last_name
+    if enabled is not None:
+        updates["enabled"] = enabled
+
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    try:
+        return user_manager.update_user(user_id, **updates)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Update failed: {str(e)}")
+
+
+def delete_user_by_id(user_id: str, current_user: dict) -> dict:
+    """Удаляет пользователя. Доступно только администраторам."""
+    roles = current_user.get("realm_access", {}).get("roles", [])
+    if "admin" not in roles:
+        raise HTTPException(status_code=403, detail="Admin role required")
+
+    try:
+        user_manager.delete_user(user_id)
+        return {"status": "deleted", "user_id": user_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Deletion failed: {str(e)}")
+
+
+def get_user_by_id(user_id: str, current_user: dict) -> dict:
+    """
+    Возвращает данные пользователя по ID.
+    Доступно самому пользователю или администратору.
+    """
+    if current_user.get("sub") != user_id:
+        roles = current_user.get("realm_access", {}).get("roles", [])
+        if "admin" not in roles:
+            raise HTTPException(status_code=403, detail="Not enough permissions to view this user")
+
+    try:
+        return user_manager.get_user(user_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting user: {str(e)}")
+
+
+# - Операции для админов -
+def create_new_user(username: str, email: str, password: str,
+                    first_name: str = "", last_name: str = "",
+                    admin_user: dict = None) -> dict:
+    """
+    Создаёт нового пользователя. Доступно только администраторам.
+    Параметр admin_user передаётся из зависимости get_admin_user для проверки прав.
+    """
+    try:
+        return user_manager.create_user(username, email, password, first_name, last_name)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"User creation failed: {str(e)}")
+
+def assign_admin_role(user_id: str, admin_user: dict) -> dict:
+    """Назначает пользователю роль admin"""
+    try:
+        user_manager.assign_admin_role(user_id)
+        return {"status": "admin assigned", "user_id": user_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to assign admin role: {str(e)}")
+
+def remove_admin_role(user_id: str, admin_user: dict) -> dict:
+    """Убирает у пользователя роль admin"""
+    try:
+        user_manager.remove_admin_role(user_id)
+        return {"status": "admin removed", "user_id": user_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to remove admin role: {str(e)}")
+
+def list_all_users(admin_user: dict) -> list:
+    """Возвращает список всех пользователей (из Keycloak)"""
+    try:
+        return user_manager.get_all_users()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get users list: {str(e)}")
+
+def sync_all_users(admin_user: dict) -> dict:
+    """Полная синхронизация локальной БД с Keycloak"""
+    try:
+        return user_manager.sync_all_users()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Sync failed: {str(e)}")

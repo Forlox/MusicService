@@ -1,3 +1,4 @@
 .env
 .venv/
-/app/Music
+app/Music
+old_DBs

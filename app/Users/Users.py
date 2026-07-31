@@ -1,4 +1,3 @@
-import bcrypt # Меняй с аутентификацией на JWT
 from Database import Database
 
 class Users:
@@ -10,12 +9,12 @@ class Users:
         self.sql.executescript("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            login TEXT NOT NULL UNIQUE,
-            password_hash TEXT NOT NULL,
+            keycloak_id TEXT NOT NULL UNIQUE,      -- UUID из Keycloak
+            login TEXT NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             last_login DATETIME,
-            is_admin INTEGER NOT NULL DEFAULT 0,
-            is_active INTEGER NOT NULL DEFAULT 1
+            is_admin INTEGER NOT NULL DEFAULT 0,   -- дублируется из ролей Keycloak
+            is_active INTEGER NOT NULL DEFAULT 1   -- дублируется из enabled в Keycloak
         );
 
         CREATE TABLE IF NOT EXISTS playlists (
@@ -27,85 +26,86 @@ class Users:
         CREATE TABLE IF NOT EXISTS user_playlists (
             user_id INTEGER NOT NULL,
             playlist_id INTEGER NOT NULL,
-
             PRIMARY KEY (user_id, playlist_id),
-
-            FOREIGN KEY(user_id)
-                REFERENCES users(id)
-                ON DELETE CASCADE,
-
-            FOREIGN KEY(playlist_id)
-                REFERENCES playlists(id)
-                ON DELETE CASCADE
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(playlist_id) REFERENCES playlists(id) ON DELETE CASCADE
         );
         """)
-
         self.sql.commit()
 
-    def hash_password(self, password):
-        return bcrypt.hashpw(
-            password.encode(),
-            bcrypt.gensalt()
-        ).decode()
-
-    # Для сравнения хэшей паролей, напрямую нельзя строки сравнивать из-за приколов шифрования
-    def verify_password(self, password, password_hash):
-        return bcrypt.checkpw(
-            password.encode(),
-            password_hash.encode()
-        )
-
-    def add_user(self, login, password, is_admin=False):
+    def get_user_by_keycloak_id(self, keycloak_id: str):
         cursor = self.sql.cursor()
+        cursor.execute("SELECT * FROM users WHERE keycloak_id = ?", (keycloak_id,))
+        return cursor.fetchone()
 
-        cursor.execute(
-            "SELECT id FROM users WHERE login=?",
-            (login,)
-        )
+    def get_all_local_users(self):
+        cursor = self.sql.cursor()
+        cursor.execute("SELECT * FROM users")
+        return cursor.fetchall()
 
+    def create_local_user(self, keycloak_id: str, login: str, is_admin: bool = False, is_active: bool = True):
+        """Создаёт запись в локальной БД после успешного создания в Keycloak."""
+        cursor = self.sql.cursor()
+        # Проверяем, нет ли уже такого keycloak_id
+        cursor.execute("SELECT id FROM users WHERE keycloak_id = ?", (keycloak_id,))
         if cursor.fetchone():
-            return False
-
+            return False  # или выбросить исключение
         cursor.execute("""
-        INSERT INTO users (
-            login,
-            password_hash,
-            is_admin
-        )
-        VALUES (?, ?, ?)
-        """, (
-            login,
-            self.hash_password(password),
-            int(is_admin)
-        ))
-
+            INSERT INTO users (keycloak_id, login, is_admin, is_active)
+            VALUES (?, ?, ?, ?)
+        """, (keycloak_id, login, int(is_admin), int(is_active)))
         self.sql.commit()
         return True
 
-    def login(self, login, password):
-        cursor = self.sql.cursor()
-        cursor.execute("""
-        SELECT id, password_hash, is_active
-        FROM users
-        WHERE login=?
-        """, (login,))
-
-        user = cursor.fetchone()
-        if not user: return None
-        if not user[2]: return None #Пароль
-        if not self.verify_password(password, user[1]):
-            return None
-
-        cursor.execute("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?",
-                       (user[0],))
+    def update_local_user(self, keycloak_id: str, login: str = None,
+                          is_admin: bool = None, is_active: bool = None):
+        """Обновляет локальные данные пользователя (без last_login)."""
+        updates = []
+        params = []
+        if login is not None:
+            updates.append("login = ?")
+            params.append(login)
+        if is_admin is not None:
+            updates.append("is_admin = ?")
+            params.append(int(is_admin))
+        if is_active is not None:
+            updates.append("is_active = ?")
+            params.append(int(is_active))
+        if not updates:
+            return
+        params.append(keycloak_id)
+        query = f"UPDATE users SET {', '.join(updates)} WHERE keycloak_id = ?"
+        self.sql.execute(query, params)
         self.sql.commit()
-        return user[0]
 
+    def delete_local_user(self, keycloak_id: str):
+        self.sql.execute("DELETE FROM users WHERE keycloak_id = ?", (keycloak_id,))
+        self.sql.commit()
+
+    def update_last_login(self, keycloak_id: str):
+        self.sql.execute(
+            "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE keycloak_id = ?",
+            (keycloak_id,)
+        )
+        self.sql.commit()
+
+
+    def add_user(self, login, is_admin=False):
+        # Устаревший метод, рекомендуется использовать create_local_user с keycloak_id
+        cursor = self.sql.cursor()
+        cursor.execute("SELECT id FROM users WHERE login=?", (login,))
+        if cursor.fetchone():
+            return False
+        cursor.execute("""
+            INSERT INTO users (login, is_admin)
+            VALUES (?, ?)
+        """, (login, int(is_admin)))
+        self.sql.commit()
+        return True
 
     def get_user(self, login):
         cursor = self.sql.cursor()
-        cursor.execute("SELECT * FROM users WHERE login = ?",
-                       (login,))
+        cursor.execute("SELECT * FROM users WHERE login = ?", (login,))
         return cursor.fetchone()
 
     def add_playlist(self, user_id, playlist_id):
@@ -128,8 +128,3 @@ class Users:
         self.sql.execute("UPDATE users SET is_active = ? WHERE id = ?",
                          (int(isActive),user_id)) # int потому что в бд нет bool
         self.sql.commit()
-
-
-if __name__ == "__main__":
-    Users().create_sql_tables()
-    Users().set_admin(1, True)

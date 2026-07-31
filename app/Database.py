@@ -25,7 +25,10 @@ class Database: # Синглтон для подключения к БД
             self.connection = None
 
 def sql_console():
-    sql = sqlite3.connect("DB.db") # Тута отдельное подключение
+    base_dir = os.path.dirname(os.path.realpath(__file__))
+    db_path = os.path.join(base_dir, "DB.db")
+
+    sql = sqlite3.connect(db_path)
     cursor = sql.cursor()
 
     cursor.execute("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name;")
