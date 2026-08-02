@@ -1,11 +1,14 @@
 from Database import Database
-from MusicManager import MusicManager
+from MusicManager.MusicManager import MusicManager
 
-def sql():
-    return Database().sql_connect()
+_manager = MusicManager()
+_db = Database()
+
+def _get_cursor():
+    return _db.sql_connect().cursor()
 
 def get_track_by_id(id, normalise=True):
-    cursor = sql().cursor()
+    cursor = _get_cursor()
     if normalise:
         cursor.execute("""
         SELECT id, title, author, album, year FROM tracks WHERE id = ?
@@ -16,7 +19,7 @@ def get_track_by_id(id, normalise=True):
     return dict(row) if row else None
 
 def get_tracks_by_album(album_name, author=None):
-    cursor = sql().cursor()
+    cursor = _get_cursor()
     if author is None:
         cursor.execute("""
         SELECT id, title, author, album, year FROM tracks WHERE album = ? ORDER BY title
@@ -28,7 +31,7 @@ def get_tracks_by_album(album_name, author=None):
     return [dict(row) for row in cursor.fetchall()]
 
 def get_tracks_by_author(author):
-    cursor = sql().cursor()
+    cursor = _get_cursor()
     cursor.execute("""
     SELECT id, title, author, album, year FROM tracks WHERE author = ? ORDER BY title
     """, (author,))
@@ -36,7 +39,7 @@ def get_tracks_by_author(author):
 
 def search_tracks(query):
     """Ищет каждое слово в полях: title, author, album, year"""
-    cursor = sql().cursor()
+    cursor = _get_cursor()
 
     if not query or query.strip() == '':
         return []
@@ -79,18 +82,15 @@ def search_tracks(query):
     return [dict(row) for row in cursor.fetchall()]
 
 def _organize_files(printLogs=False):
-    """Файлы музыки будут автоматом организованы в правильную папку и указаны в БД"""
-    manager = MusicManager()
-    manager.organize_files(printLogs)
+    """Организация файлов треков, синхронизация с БД"""
+    _manager.organize_files(printLogs)
 
 def add_music_file(file, printLogs=False):
     """Один конкретный файл организует по папкам и добавляет в БД"""
-    manager = MusicManager()
-    return manager.add_music_file(file, printLogs)
+    return _manager.add_music_file(file, printLogs)
 
 def delete_track_by_id(track_id, print_logs=True):
-    manager = MusicManager()
-    return manager.delete_track(track_id, print_logs)
+    return _manager.delete_track(track_id, print_logs)
 
 if __name__ == "__main__":
     result = ""

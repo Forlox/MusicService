@@ -16,20 +16,6 @@ class Users:
             is_admin INTEGER NOT NULL DEFAULT 0,   -- дублируется из ролей Keycloak
             is_active INTEGER NOT NULL DEFAULT 1   -- дублируется из enabled в Keycloak
         );
-
-        CREATE TABLE IF NOT EXISTS playlists (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS user_playlists (
-            user_id INTEGER NOT NULL,
-            playlist_id INTEGER NOT NULL,
-            PRIMARY KEY (user_id, playlist_id),
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-            FOREIGN KEY(playlist_id) REFERENCES playlists(id) ON DELETE CASCADE
-        );
         """)
         self.sql.commit()
 

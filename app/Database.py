@@ -15,8 +15,8 @@ class Database: # Синглтон для подключения к БД
             db_path = os.path.join(base_dir, "DB.db")
             self.connection = sqlite3.connect(db_path, check_same_thread=False) # Синглтон лишний, надо под фастапи подстраиваться
 
-            self.connection.row_factory = sqlite3.Row # вайбкод: SQLite должен возвращать sqlite3.Row, а не обычный кортеж.
-            self.connection.execute("PRAGMA foreign_keys = ON") # вайбкод: без этой настройки SQLite не применяет ON DELETE CASCADE.
+            self.connection.row_factory = sqlite3.Row
+            self.connection.execute("PRAGMA foreign_keys = ON")
         return self.connection
 
     def close_connection(self):

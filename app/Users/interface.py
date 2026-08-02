@@ -1,5 +1,5 @@
-from typing import Optional, Dict, Any
-from fastapi import HTTPException, status
+from typing import Optional
+from fastapi import HTTPException
 from Users.UserManager import UserManager
 
 user_manager = UserManager()
@@ -88,25 +88,30 @@ def get_user_by_id(user_id: str, current_user: dict) -> dict:
 
 
 # - Операции для админов -
-def create_new_user(username: str, email: str, password: str,
-                    first_name: str = "", last_name: str = "",
+def create_new_user(username: str, password: str,
+                    email: str = "", first_name: str = "", last_name: str = "",
                     admin_user: dict = None) -> dict:
     """
     Создаёт нового пользователя. Доступно только администраторам.
     Параметр admin_user передаётся из зависимости get_admin_user для проверки прав.
     """
     try:
-        return user_manager.create_user(username, email, password, first_name, last_name)
+        return user_manager.create_user(username, password, email, first_name, last_name)
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"User creation failed: {str(e)}")
 
+def is_admin(user_id: str) -> bool:
+    return user_manager.is_admin(user_id)
+
 def assign_admin_role(user_id: str, admin_user: dict) -> dict:
     """Назначает пользователю роль admin"""
     try:
-        user_manager.assign_admin_role(user_id)
-        return {"status": "admin assigned", "user_id": user_id}
+        if not is_admin(user_id):
+            user_manager.assign_admin_role(user_id)
+            return {"status": "admin assigned", "user_id": user_id}
+        else: return {"status": "user is already an admin", "user_id": user_id}
     except HTTPException:
         raise
     except Exception as e:
@@ -115,8 +120,10 @@ def assign_admin_role(user_id: str, admin_user: dict) -> dict:
 def remove_admin_role(user_id: str, admin_user: dict) -> dict:
     """Убирает у пользователя роль admin"""
     try:
-        user_manager.remove_admin_role(user_id)
-        return {"status": "admin removed", "user_id": user_id}
+        if is_admin(user_id):
+            user_manager.remove_admin_role(user_id)
+            return {"status": "admin removed", "user_id": user_id}
+        else: return {"status": "user is already not admin", "user_id": user_id}
     except HTTPException:
         raise
     except Exception as e:

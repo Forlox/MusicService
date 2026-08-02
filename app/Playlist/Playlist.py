@@ -11,7 +11,7 @@ class Playlist:
         CREATE TABLE IF NOT EXISTS playlists (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
-            owners TEXT NOT NULL DEFAULT '[]',  -- JSON массив [user_id, ...], первый в списке - главный владелец
+            owners TEXT NOT NULL DEFAULT '[]',  -- JSON массив [keycloak_id, ...], первый в списке - главный владелец
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -35,17 +35,31 @@ class Playlist:
         """)
         self.sql.commit()
 
-    def create(self, name, owner_id=None, track_ids=None):
+    def create(self, name, owner_keycloak_id=None, track_ids=None):
         cursor = self.sql.cursor()
 
-        if track_ids is None: track_ids = []
-        owners = json.dumps([owner_id]) if owner_id is not None else '[]'
+        if track_ids is None:
+            track_ids = []
+
+        if owner_keycloak_id is not None:
+            cursor.execute("SELECT 1 FROM users WHERE keycloak_id = ?", (owner_keycloak_id,))
+            if not cursor.fetchone():
+                raise ValueError(f"Пользователь с keycloak_id {owner_keycloak_id} не найден")
+
+        owners = json.dumps([owner_keycloak_id]) if owner_keycloak_id is not None else '[]'
 
         cursor.execute("INSERT INTO playlists (name, owners) VALUES (?, ?)", (name, owners))
 
         playlist_id = cursor.lastrowid
 
         for position, track_id in enumerate(track_ids):
+            if track_id == 0:
+                continue
+            # Проверяем существование трека в БД
+            cursor.execute("SELECT 1 FROM tracks WHERE id = ?", (track_id,))
+            if not cursor.fetchone():
+                continue
+
             cursor.execute("""
             INSERT INTO playlist_tracks (playlist_id, track_id, position)
             VALUES (?, ?, ?)
@@ -54,7 +68,7 @@ class Playlist:
         self.sql.commit()
         return playlist_id
 
-    def add_owner(self, playlist_id, user_id):
+    def add_owner(self, playlist_id, owner_keycloak_id):
         cursor = self.sql.cursor()
 
         cursor.execute("SELECT owners FROM playlists WHERE id = ?", (playlist_id,))
@@ -62,11 +76,19 @@ class Playlist:
         if not row:
             raise ValueError(f"Плейлист с id {playlist_id} не найден")
 
+        cursor.execute(
+            "SELECT 1 FROM users WHERE keycloak_id = ?",
+            (owner_keycloak_id,)
+        )
+        if not cursor.fetchone():
+            raise ValueError(f"Пользователь с keycloak_id {owner_keycloak_id} не найден")
+
         owners = json.loads(row[0])
 
-        if user_id in owners: return False
+        if owner_keycloak_id in owners:
+            return False
 
-        owners.append(user_id)
+        owners.append(owner_keycloak_id)
         cursor.execute(
             "UPDATE playlists SET owners = ? WHERE id = ?",
             (json.dumps(owners), playlist_id)
@@ -118,7 +140,8 @@ class Playlist:
 
         # Сдвигаем позиции всех последующих треков вверх
         cursor.execute("""
-        UPDATE playlist_tracks SET position = position - 1 
+        UPDATE playlist_tracks
+        SET position = position - 1
         WHERE playlist_id = ? AND position > ?
         """, (playlist_id, deleted_position))
 
@@ -138,10 +161,9 @@ class Playlist:
         self.sql.commit()
         return True
 
-    def set_main_owner(self, playlist_id, user_id):
+    def set_main_owner(self, playlist_id, owner_keycloak_id):
         cursor = self.sql.cursor()
 
-        # Получаем текущих владельцев
         cursor.execute("SELECT owners FROM playlists WHERE id = ?", (playlist_id,))
         row = cursor.fetchone()
         if not row:
@@ -149,13 +171,11 @@ class Playlist:
 
         owners = json.loads(row[0])
 
-        # Проверка на существование
-        if user_id not in owners:
-            raise ValueError(f"Пользователь {user_id} не является владельцем плейлиста")
+        if owner_keycloak_id not in owners:
+            raise ValueError(f"Пользователь {owner_keycloak_id} не является владельцем плейлиста")
 
-        # Удаляем пользователя из списка и вставляем в начало
-        owners.remove(user_id)
-        owners.insert(0, user_id)
+        owners.remove(owner_keycloak_id)
+        owners.insert(0, owner_keycloak_id)
 
         cursor.execute(
             "UPDATE playlists SET owners = ? WHERE id = ?",

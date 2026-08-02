@@ -1,10 +1,10 @@
-from Playlist import Playlist
+from Playlist.Playlist import Playlist
 from Database import Database
 
 pl = Playlist()
-_db = Database()
+_db = Playlist().sql
 def _get_cursor():
-    return _db.sql_connect().cursor()
+    return _db.cursor()
 
 
 def create(name, owner_id=None, track_ids=None):
@@ -33,16 +33,9 @@ def get_main_owner(playlist_id):
 
 def list_playlists():
     cursor = _get_cursor()
-    cursor.execute('''
-        SELECT p.id, p.name, p.created_at, u.login as author
-        FROM playlists p
-        LEFT JOIN user_playlists up ON p.id = up.playlist_id
-        LEFT JOIN users u ON up.user_id = u.id
-        WHERE up.user_id = (
-            SELECT user_id FROM user_playlists 
-            WHERE playlist_id = p.id ORDER BY user_id 
-            LIMIT 1
-        )
-        GROUP BY p.id ORDER BY p.created_at DESC
-    ''')
+    cursor.execute("""
+        SELECT id, name, owners, created_at
+        FROM playlists
+        ORDER BY created_at DESC
+    """)
     return [dict(row) for row in cursor.fetchall()]

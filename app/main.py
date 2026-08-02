@@ -1,17 +1,16 @@
-import os
 from pathlib import Path
 from dotenv import load_dotenv
 
 dotenv_path = Path(__file__).parent.parent / ".env"
 load_dotenv(dotenv_path=dotenv_path)
 
-import Authentication.Auth as Auth
+# TODO исправь эту кашу под формат "from * import *"
 import MusicManager.MusicManager as MusicManager
-import MusicManager.Playlist as Playlist
+import Playlist.Playlist as Playlist
 import MusicManager.Queue as Queue
 import Users.Devices as Devices
 import Users.Users as Users
-import Database
+from Users.UserManager import UserManager
 
 import uvicorn, api.api as api
 
@@ -26,6 +25,7 @@ def initialize_database():
 def main():
     initialize_database()
     MusicManager.MusicManager().organize_files()
+    UserManager().sync_all_users()
 
 if __name__ == "__main__":
     main()

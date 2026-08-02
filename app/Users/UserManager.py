@@ -73,13 +73,12 @@ class UserManager:
             logger.info(f"Created local user {keycloak_id}")
         return True
 
-    def create_user(self, username: str, email: str, password: str,first_name: str = "", last_name: str = "") -> Dict:
-        """
-        Создаёт пользователя в Keycloak и локальной БД.
+    def create_user(self, username: str, password: str, email: str = "", first_name: str = "", last_name: str = "") -> Dict:
+        """Создаёт пользователя в Keycloak и локальной БД.
         Выбрасывает HTTPException при ошибке.
         """
-        if not username or not email or not password:
-            raise HTTPException(status_code=400, detail="Username, email and password are required")
+        if not username or not password:
+            raise HTTPException(status_code=400, detail="Username and password are required")
         if len(password) < 6:
             raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
 
@@ -93,17 +92,42 @@ class UserManager:
 
         # 1 - Создаём в Keycloak
         try:
-            new_user = self.keycloak.create_user({
+            user_data = {
                 "username": username,
-                "email": email,
                 "enabled": True,
                 "firstName": first_name,
                 "lastName": last_name,
-                "emailVerified": False,   # можно настроить
-            }, exist_ok=False)
-            keycloak_id = new_user["id"]
+                "emailVerified": False,
+            }
+
+            if email:
+                user_data["email"] = email
+                # Проверяем уникальность email
+                # TODO в кейклоке это настраивается, надо тестить
+                try:
+                    existing_email = self.keycloak.get_users({"email": email, "exact": True})
+                    if existing_email:
+                        raise HTTPException(status_code=400, detail="Email already exists")
+                except KeycloakGetError as e:
+                    logger.error(f"Keycloak get_users by email failed: {e}")
+                    raise HTTPException(status_code=500, detail="Keycloak error")
+
+            new_user = self.keycloak.create_user(user_data, exist_ok=False)
+
+            if isinstance(new_user, dict):
+                keycloak_id = new_user.get("id")
+            elif isinstance(new_user, str):
+                keycloak_id = new_user
+            else:
+                logger.error(f"Unexpected response type from Keycloak: {type(new_user)}")
+                raise HTTPException(status_code=500, detail="Unexpected response from Keycloak")
+
+            if not keycloak_id:
+                raise HTTPException(status_code=500, detail="Failed to get user ID from Keycloak")
+
             self.keycloak.set_user_password(keycloak_id, password, temporary=False)
             logger.info(f"Created Keycloak user {username} (ID: {keycloak_id})")
+
         except KeycloakError as e:
             logger.error(f"Keycloak create_user failed: {e}")
             raise HTTPException(status_code=400, detail=f"Keycloak error: {str(e)}")
@@ -125,7 +149,7 @@ class UserManager:
                 logger.error(f"Rollback failed: {rollback_error}")
             raise HTTPException(status_code=500, detail=f"Local database error: {str(e)}")
 
-        return { # Возвращаем данные созданного пользователя
+        return {
             "id": keycloak_id,
             "username": username,
             "email": email,
@@ -200,8 +224,17 @@ class UserManager:
             # Можно выбросить исключение, но лучше просто предупредить
             # raise HTTPException(status_code=500, detail="Local database error")
 
+    def is_admin(self, keycloak_id: str) -> bool:
+        """Проверяет, есть ли у пользователя роль admin в Keycloak"""
+        try:
+            user_roles = self.keycloak.get_realm_roles_of_user(keycloak_id)
+            return any(role.get("name") == "admin" for role in user_roles)
+        except KeycloakError as e:
+            logger.error(f"Keycloak get_realm_roles_of_user failed for {keycloak_id}: {e}")
+            raise HTTPException(status_code=500, detail="Keycloak error")
+
     def assign_admin_role(self, keycloak_id: str) -> None:
-        """Назначает пользователю роль admin в Keycloak и обновляет локальный is_admin."""
+        """Назначает пользователю роль admin в Keycloak и обновляет локальный is_admin"""
         try:
             realm_roles = self.keycloak.get_realm_roles()
             admin_role = next((r for r in realm_roles if r["name"] == "admin"), None)
