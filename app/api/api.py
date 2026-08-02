@@ -44,7 +44,7 @@ async def get_author_tracks(author: str):
 async def search_tracks(query: str):
     return music.search_tracks(query)
 
-# --- Плейлисты --- TODO добавить аутентификацию API (Щас оно публично)
+# --- Плейлисты --- TODO добавить аутентификацию API (Щас оно публично). Добавить просмотр треков в плейлисте
 @playlist_router.post("/")
 async def playlist_create(playlist_name: str, track_ids: list[int] | None = None, current_user: dict = Depends(get_current_user),):
     owner_id = current_user["sub"]
