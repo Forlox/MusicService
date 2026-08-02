@@ -3,7 +3,6 @@ from typing import Optional, List, Dict, Any
 from fastapi import HTTPException, status
 from keycloak.exceptions import KeycloakAuthenticationError, KeycloakGetError, KeycloakError
 
-# Импорты из ваших модулей
 from Authentication.Auth import keycloak_admin, keycloak_openid
 from Users.Users import Users
 
@@ -11,10 +10,6 @@ from Users.Users import Users
 logger = logging.getLogger(__name__)
 
 class UserManager:
-    """
-    Единый менеджер для управления пользователями с синхронизацией Keycloak и локальной БД.
-    Все операции с пользователями должны проходить через этот класс.
-    """
     def __init__(self):
         self.keycloak = keycloak_admin
         self.local = Users()
@@ -182,13 +177,22 @@ class UserManager:
             logger.error(f"Keycloak update_user failed: {e}")
             raise HTTPException(status_code=400, detail=f"Keycloak error: {str(e)}")
 
-        # Обновляем локально (поддерживаемые поля: login, is_admin, is_active)
         local_updates = {}
         if "username" in payload:
             local_updates["login"] = payload["username"]
         if "enabled" in payload:
             local_updates["is_active"] = payload["enabled"]
-        # is_admin не обновляется через update_user, только через assign/remove role
+
+        # Синхронизируем is_admin из Keycloak
+        try:
+            is_admin = self.is_admin(keycloak_id)
+            local_updates["is_admin"] = is_admin
+        except HTTPException:
+            # Если не удалось получить роли, используем существующее значение
+            local_user = self._get_local_user_by_keycloak_id(keycloak_id)
+            if local_user:
+                local_updates["is_admin"] = local_user.get("is_admin", False)
+
         if local_updates:
             try:
                 self.local.update_local_user(keycloak_id, **local_updates)
@@ -283,7 +287,7 @@ class UserManager:
             logger.error(f"Local update admin flag failed: {e}")
 
     def get_user(self, keycloak_id: str) -> Dict:
-        """Возвращает пользователя из Keycloak (может быть дополнен локальными данными)."""
+        """Возвращает пользователя из Keycloak"""
         kc_user = self._get_keycloak_user(keycloak_id)
         if not kc_user:
             raise HTTPException(status_code=404, detail="User not found")
