@@ -1,0 +1,178 @@
+from Database import Database
+import json
+
+class Playlist:
+    def __init__(self):
+        self.sql = Database().sql_connect()
+        self.create_sql_tables()
+
+    def create_sql_tables(self):
+        self.sql.executescript("""
+        CREATE TABLE IF NOT EXISTS playlists (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            owners TEXT NOT NULL DEFAULT '[]',  -- JSON массив [user_id, ...], первый в списке - главный владелец
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS playlist_tracks (
+            playlist_id INTEGER NOT NULL,
+            track_id INTEGER NOT NULL,
+            position INTEGER NOT NULL,
+            added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (playlist_id, track_id),
+
+            FOREIGN KEY (playlist_id)
+                REFERENCES playlists(id)
+                ON DELETE CASCADE,
+
+            FOREIGN KEY (track_id)
+                REFERENCES tracks(id)
+                ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_playlist_tracks_order ON playlist_tracks(playlist_id, position);
+        """)
+        self.sql.commit()
+
+    def create(self, name, owner_id=None, track_ids=None):
+        cursor = self.sql.cursor()
+
+        if track_ids is None: track_ids = []
+        owners = json.dumps([owner_id]) if owner_id is not None else '[]'
+
+        cursor.execute("INSERT INTO playlists (name, owners) VALUES (?, ?)", (name, owners))
+
+        playlist_id = cursor.lastrowid
+
+        for position, track_id in enumerate(track_ids):
+            cursor.execute("""
+            INSERT INTO playlist_tracks (playlist_id, track_id, position)
+            VALUES (?, ?, ?)
+            """, (playlist_id, track_id, position))
+
+        self.sql.commit()
+        return playlist_id
+
+    def add_owner(self, playlist_id, user_id):
+        cursor = self.sql.cursor()
+
+        cursor.execute("SELECT owners FROM playlists WHERE id = ?", (playlist_id,))
+        row = cursor.fetchone()
+        if not row:
+            raise ValueError(f"Плейлист с id {playlist_id} не найден")
+
+        owners = json.loads(row[0])
+
+        if user_id in owners: return False
+
+        owners.append(user_id)
+        cursor.execute(
+            "UPDATE playlists SET owners = ? WHERE id = ?",
+            (json.dumps(owners), playlist_id)
+        )
+        self.sql.commit()
+        return True
+
+    def add_tracks(self, playlist_id, track_ids):
+        """Берет список id треков и добавляет в плейлист"""
+        cursor = self.sql.cursor()
+
+        cursor.execute("SELECT id FROM playlists WHERE id = ?", (playlist_id,))
+        if not cursor.fetchone():
+            raise ValueError(f"Плейлист с id {playlist_id} не найден")
+
+        cursor.execute(
+            "SELECT COALESCE(MAX(position), -1) FROM playlist_tracks WHERE playlist_id = ?",
+            (playlist_id,)
+        )
+        max_pos = cursor.fetchone()[0]
+
+        for i, track_id in enumerate(track_ids):
+            position = max_pos + i + 1
+            cursor.execute("""
+            INSERT OR IGNORE INTO playlist_tracks (playlist_id, track_id, position)
+            VALUES (?, ?, ?)
+            """, (playlist_id, track_id, position))
+
+        self.sql.commit()
+        return len(track_ids)
+
+    def remove_track(self, playlist_id, track_id):
+        cursor = self.sql.cursor()
+
+        # Проверка существования
+        cursor.execute(
+            "SELECT position FROM playlist_tracks WHERE playlist_id = ? AND track_id = ?",
+            (playlist_id, track_id)
+        )
+        row = cursor.fetchone()
+        if not row:
+            return False
+
+        deleted_position = row[0]
+        cursor.execute(
+            "DELETE FROM playlist_tracks WHERE playlist_id = ? AND track_id = ?",
+            (playlist_id, track_id)
+        )
+
+        # Сдвигаем позиции всех последующих треков вверх
+        cursor.execute("""
+        UPDATE playlist_tracks SET position = position - 1 
+        WHERE playlist_id = ? AND position > ?
+        """, (playlist_id, deleted_position))
+
+        self.sql.commit()
+        return True
+
+    def rename(self, playlist_id, new_name):
+        cursor = self.sql.cursor()
+        cursor.execute(
+            "UPDATE playlists SET name = ? WHERE id = ?",
+            (new_name, playlist_id)
+        )
+
+        if cursor.rowcount == 0:
+            raise ValueError(f"Плейлист с id {playlist_id} не найден")
+
+        self.sql.commit()
+        return True
+
+    def set_main_owner(self, playlist_id, user_id):
+        cursor = self.sql.cursor()
+
+        # Получаем текущих владельцев
+        cursor.execute("SELECT owners FROM playlists WHERE id = ?", (playlist_id,))
+        row = cursor.fetchone()
+        if not row:
+            raise ValueError(f"Плейлист с id {playlist_id} не найден")
+
+        owners = json.loads(row[0])
+
+        # Проверка на существование
+        if user_id not in owners:
+            raise ValueError(f"Пользователь {user_id} не является владельцем плейлиста")
+
+        # Удаляем пользователя из списка и вставляем в начало
+        owners.remove(user_id)
+        owners.insert(0, user_id)
+
+        cursor.execute(
+            "UPDATE playlists SET owners = ? WHERE id = ?",
+            (json.dumps(owners), playlist_id)
+        )
+        self.sql.commit()
+        return True
+
+    def get_owners(self, playlist_id):
+        cursor = self.sql.cursor()
+        cursor.execute("SELECT owners FROM playlists WHERE id = ?", (playlist_id,))
+        row = cursor.fetchone()
+        if not row:
+            raise ValueError(f"Плейлист с id {playlist_id} не найден")
+
+        return json.loads(row[0])
+
+    def get_main_owner(self, playlist_id):
+        owners = self.get_owners(playlist_id)
+        return owners[0] if owners else None
