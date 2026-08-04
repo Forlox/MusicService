@@ -1,0 +1,51 @@
+from fastapi import APIRouter, Depends
+
+from Authentication.Auth import get_current_user
+import Playlist.interface as playlist
+
+playlist_router = APIRouter(prefix="/playlist", tags=["Playlist"])
+
+@playlist_router.post("/")
+async def playlist_create(
+    playlist_name: str,
+    track_ids: list[int] | None = None,
+    current_user: dict = Depends(get_current_user)
+):
+    owner_id = current_user["sub"]
+    return playlist.create(playlist_name, owner_id, track_ids)
+
+@playlist_router.post("/{playlist_id}/owners")
+async def playlist_add_owner(playlist_id: int, user_id: str):
+    return playlist.add_owner(playlist_id, user_id)
+
+@playlist_router.get("/{playlist_id}")
+async def playlist_track_list(playlist_id: int):
+    return playlist.track_list(playlist_id)
+
+@playlist_router.post("/{playlist_id}/tracks")
+async def playlist_add_tracks(playlist_id: int, track_ids: list[int]):
+    return playlist.add_tracks(playlist_id, track_ids)
+
+@playlist_router.delete("/{playlist_id}/tracks")
+async def playlist_remove_track(playlist_id: int, track_id: int):
+    return playlist.remove_track(playlist_id, track_id)
+
+@playlist_router.put("/{playlist_id}")
+async def playlist_rename(playlist_id: int, new_name: str):
+    return playlist.rename(playlist_id, new_name)
+
+@playlist_router.put("/{playlist_id}/main-owner")
+async def playlist_set_main_owner(playlist_id: int, user_id: str):
+    return playlist.set_main_owner(playlist_id, user_id)
+
+@playlist_router.get("/{playlist_id}/owners")
+async def playlist_get_owners(playlist_id: int):
+    return playlist.get_owners(playlist_id)
+
+@playlist_router.get("/{playlist_id}/main-owner")
+async def playlist_get_main_owner(playlist_id: int):
+    return playlist.get_main_owner(playlist_id)
+
+@playlist_router.get("/")
+async def playlist_list():
+    return playlist.list_playlists()

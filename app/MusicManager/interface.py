@@ -37,7 +37,7 @@ def get_tracks_by_author(author):
     """, (author,))
     return [dict(row) for row in cursor.fetchall()]
 
-def search_tracks(query):
+def search_tracks(query): # TODO мб ограничить кол-во выданных треков
     """Ищет каждое слово в полях: title, author, album, year"""
     cursor = _get_cursor()
 
@@ -92,9 +92,18 @@ def add_music_file(file, printLogs=False):
 def delete_track_by_id(track_id, print_logs=True):
     return _manager.delete_track(track_id, print_logs)
 
-if __name__ == "__main__":
-    result = ""
+def get_track_list():
+    cursor = _get_cursor()
+    cursor.execute("SELECT id, title, author, album, year FROM tracks")
+    return [dict(row) for row in cursor.fetchall()]
 
+def get_track_file_path_by_id(id):
+    track = get_track_by_id(id, normalise=False)
+    return track['file_path']
+
+if __name__ == "__main__":
+    result = get_track_file_path_by_id(2)
+    print(result)
     try:
         if result:
             for row in result:
