@@ -37,7 +37,7 @@ def get_tracks_by_author(author):
     """, (author,))
     return [dict(row) for row in cursor.fetchall()]
 
-def search_tracks(query): # TODO мб ограничить кол-во выданных треков
+def search_tracks(query, page=1, page_size=50): # TODO мб ограничить кол-во выданных треков
     """Ищет каждое слово в полях: title, author, album, year"""
     cursor = _get_cursor()
 
@@ -71,14 +71,32 @@ def search_tracks(query): # TODO мб ограничить кол-во выда�
         return []
 
     substrings = ' AND '.join(conditions)
-    query_sql = f"""
-    SELECT id, title, author, album, year
+
+    count_sql = f"""
+    SELECT COUNT(*)
     FROM tracks
     WHERE {substrings}
-    ORDER BY title
     """
 
-    cursor.execute(query_sql, params)
+    cursor.execute(count_sql, params)
+    total = cursor.fetchone()[0]
+
+    max_page = max(1, (total + page_size - 1) // page_size)
+
+    if page < 1:
+        page = 1
+    elif page > max_page:
+        page = max_page
+
+    offset = (page - 1) * page_size
+
+    query_sql = f"""
+    SELECT id, title, author, album, year FROM tracks
+    WHERE {substrings} ORDER BY title
+    LIMIT ? OFFSET ?
+    """
+
+    cursor.execute(query_sql, params + [page_size, offset])
     return [dict(row) for row in cursor.fetchall()]
 
 def _organize_files(printLogs=False):
@@ -102,7 +120,7 @@ def get_track_file_path_by_id(id):
     return track['file_path']
 
 if __name__ == "__main__":
-    result = get_track_file_path_by_id(2)
+    result = search_tracks("Ария", 1, 2)
     print(result)
     try:
         if result:
