@@ -8,10 +8,10 @@ manage_router = APIRouter(
     tags=["Admin"],
     dependencies=[Depends(get_admin_user)]
 )
-
-@manage_router.post("/add")
-async def add_music_file(file: str):
-    return music.add_music_file(file)
+# TODO сделать нормальную загрузку файлов
+# @manage_router.post("/add")
+# async def add_music_file(file: str):
+#     return music.add_music_file(file)
 
 @manage_router.delete("/{track_id}")
 async def delete_track(track_id: int):
