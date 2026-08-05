@@ -99,7 +99,7 @@ def search_tracks(query, page=1, page_size=50): # TODO мб ограничить
     cursor.execute(query_sql, params + [page_size, offset])
     return [dict(row) for row in cursor.fetchall()]
 
-def _organize_files(printLogs=False):
+def organize_files(printLogs=False):
     """Организация файлов треков, синхронизация с БД"""
     _manager.organize_files(printLogs)
 

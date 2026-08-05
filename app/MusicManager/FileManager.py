@@ -1,13 +1,13 @@
 from pathlib import Path
 import mutagen, shutil, time
 
-EXTENSIONS = {'.mp3', '.flac', '.wav'}
+ALLOWED_EXTENSIONS = {'.mp3', '.flac', '.wav'}
 MUSIC_DIR = Path(__file__).resolve().parents[1] / "Music"
 
 def scan(folder):
     files = []
     for file in Path(folder).rglob('*'):
-        if file.suffix.lower() in EXTENSIONS:
+        if file.suffix.lower() in ALLOWED_EXTENSIONS:
             files.append(file)
     return files
 
@@ -25,7 +25,7 @@ def normalize_author(author):
     return author.strip()
 
 class FileManager:
-    EXTENSIONS = EXTENSIONS  # Нужно, не трогать
+    EXTENSIONS = ALLOWED_EXTENSIONS  # Нужно, не трогать
     def __init__(self):
         self.tracks = []
 

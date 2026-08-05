@@ -291,11 +291,16 @@ class UserManager:
         kc_user = self._get_keycloak_user(keycloak_id)
         if not kc_user:
             raise HTTPException(status_code=404, detail="User not found")
-        # Дополняем локальными данными, если нужно (например, created_at, last_login)
-        local_user = self._get_local_user_by_keycloak_id(keycloak_id)
-        if local_user:
-            kc_user["local_created_at"] = local_user.get("created_at")
-            kc_user["local_last_login"] = local_user.get("last_login")
+
+        roles = keycloak_admin.get_realm_roles_of_user(keycloak_id)
+        kc_user["roles"] = [role["name"] for role in roles]
+
+        # # Дополняем локальными данными, если нужно (например, created_at, last_login)
+        # local_user = self._get_local_user_by_keycloak_id(keycloak_id)
+        # if local_user:
+        #     kc_user["local_created_at"] = local_user.get("created_at")
+        #     kc_user["local_last_login"] = local_user.get("last_login")
+
         return kc_user
 
     def get_user_by_username(self, username: str) -> Optional[Dict]:

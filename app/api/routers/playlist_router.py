@@ -49,3 +49,7 @@ async def playlist_get_main_owner(playlist_id: int):
 @playlist_router.get("/")
 async def playlist_list():
     return playlist.list_playlists()
+
+@playlist_router.delete("{playlist_id}")
+async def playlist_delete(playlist_id: int):
+    return playlist.delete(playlist_id)

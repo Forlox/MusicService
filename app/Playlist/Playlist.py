@@ -196,3 +196,21 @@ class Playlist:
     def get_main_owner(self, playlist_id):
         owners = self.get_owners(playlist_id)
         return owners[0] if owners else None
+
+    def delete(self, playlist_id):
+        cursor = self.sql.cursor()
+
+        cursor.execute("SELECT name FROM playlists WHERE id = ?",(playlist_id,))
+        row = cursor.fetchone()
+
+        if not row:
+            return f"Плейлист с id {playlist_id} не найден"
+
+        playlist_name = row[0]
+        cursor.execute(
+            "DELETE FROM playlists WHERE id = ?",
+            (playlist_id,)
+        )
+
+        self.sql.commit()
+        return f'Плейлист «{playlist_name}» (id={playlist_id}) успешно удален'

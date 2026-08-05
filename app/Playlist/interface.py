@@ -9,6 +9,9 @@ def _get_cursor():
 def create(name, owner_id=None, track_ids=None):
     return pl.create(name, owner_id, track_ids)
 
+def delete(playlist_id: int):
+    return pl.delete(playlist_id)
+
 def add_owner(playlist_id, user_id):
     return pl.add_owner(playlist_id, user_id)
 
