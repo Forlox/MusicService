@@ -1,6 +1,6 @@
 import os, time
 from keycloak.exceptions import KeycloakConnectionError
-from Authentication.Auth import keycloak_admin
+from Authentication.Auth import keycloak_admin, KEYCLOAK_CLIENT_ID
 
 def configure_basic_scope():
     scopes = keycloak_admin.get_client_scopes()
@@ -61,6 +61,27 @@ def configure_token_settings():
             }
         )
 
+def configure_lightweight_tokens():
+    """Отключает lightweight access tokens для клиента приложения.
+
+    Начиная с Keycloak 26 сервисные клиенты (например admin-cli) по умолчанию
+    выпускают "лёгкие" access-токены, в которые не попадают роли (realm_access)
+    и другие claims. Без полноценного токена проверка админов не работает.
+    """
+    client_id = keycloak_admin.get_client_id(KEYCLOAK_CLIENT_ID)
+    client = keycloak_admin.get_client(client_id)
+
+    attributes = client.get("attributes", {})
+    attributes["client.use.lightweight.access.token.enabled"] = "false"
+
+    keycloak_admin.update_client(
+        client_id,
+        {
+            **client,
+            "attributes": attributes,
+        }
+    )
+
 def wait_for_keycloak():
     while True:
         try:
@@ -68,11 +89,12 @@ def wait_for_keycloak():
             return
 
         except KeycloakConnectionError:
-            print("Keycloak недоступен. Попытка повторного подключения через 3 сек")
+            print("Keycloak недоступен. Попытка повторного подключения")
             time.sleep(3)
 
 
 def configure_keycloak():
     wait_for_keycloak()
     configure_basic_scope()
+    configure_lightweight_tokens()
     configure_token_settings()

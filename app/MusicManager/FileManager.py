@@ -30,6 +30,7 @@ class FileManager:
         self.tracks = []
 
     def run(self):
+        MUSIC_DIR.mkdir(parents=True, exist_ok=True)
         for file in scan(MUSIC_DIR):
             self.process(file)
 

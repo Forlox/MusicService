@@ -4,6 +4,9 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, HTTPBasic
 from keycloak import KeycloakAdmin, KeycloakOpenID
 from keycloak.exceptions import KeycloakAuthenticationError, KeycloakGetError
 
+import logging
+logger = logging.getLogger(__name__)
+
 # Конфигурация из переменных окружения
 KEYCLOAK_SERVER_URL = os.getenv("KEYCLOAK_SERVER_URL", "http://localhost:8080/")
 KEYCLOAK_REALM = os.getenv("KEYCLOAK_REALM", "master")
@@ -29,14 +32,14 @@ keycloak_admin = KeycloakAdmin(
 )
 
 # Схемы извлечения учётных данных
-bearer_scheme = HTTPBearer()          # Authorization: Bearer <token>
-basic_scheme = HTTPBasic()            # Authorization: Basic <base64>
+bearer_scheme = HTTPBearer()
+basic_scheme = HTTPBasic()
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),) -> dict:
-    print(KEYCLOAK_CLIENT_ID)
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme), ) -> dict:
     token = credentials.credentials
     try:
-        decoded = keycloak_openid.decode_token(token) # decode_token() автоматически проверяет подпись, issuer, expiration
+        decoded = keycloak_openid.decode_token(token)
+        logger.debug(f"Decoded token: {decoded.keys()}")
         return dict(decoded)
     except KeycloakAuthenticationError:
         raise HTTPException(
@@ -51,16 +54,36 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(b
         )
 
 
-async def get_current_user_from_basic(credentials: HTTPBasicCredentials = Depends(basic_scheme),) -> dict:
-    """
-    Аутентификация по логину/паролю (HTTP Basic).
-    Получает токен и возвращает его claims через decode_token (без userinfo).
-    """
+async def get_admin_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
+    token_data = await get_current_user(credentials)
+
+    # Получаем роли из realm
+    realm_roles = token_data.get("realm_access", {}).get("roles", [])
+
+    # Получаем роли клиента (если есть)
+    client_roles = token_data.get("resource_access", {}).get(KEYCLOAK_CLIENT_ID, {}).get("roles", [])
+
+    # Объединяем все роли
+    all_roles = realm_roles + client_roles
+
+    logger.debug(f"User roles: {all_roles}")
+
+    if "admin" not in all_roles:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Insufficient permissions. Admin role required. Current roles: {all_roles}",
+        )
+
+    return token_data
+
+
+async def get_current_user_from_basic(credentials: HTTPBasicCredentials = Depends(basic_scheme), ) -> dict:
+    """Аутентификация по логину/паролю (HTTP Basic)."""
     try:
         token = keycloak_openid.token(
             username=credentials.username,
             password=credentials.password,
-            scope="openid",           # ← обязательно добавляем openid, чтобы работало и с userinfo при желании
+            scope="openid roles profile email",  # Важно добавить roles в scope
         )
         return keycloak_openid.decode_token(token["access_token"])
     except KeycloakAuthenticationError:
@@ -69,20 +92,3 @@ async def get_current_user_from_basic(credentials: HTTPBasicCredentials = Depend
             detail="Invalid username or password",
             headers={"WWW-Authenticate": "Basic"},
         )
-
-
-async def get_admin_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
-    token_data = await get_current_user(credentials)
-
-    print("REALM:", token_data.get("realm_access"))
-    print("CLIENT:", token_data.get("resource_access"))
-
-    roles = token_data.get("realm_access", {}).get("roles", [])
-
-    if "admin" not in roles:
-        raise HTTPException(
-            status_code=403,
-            detail="Insufficient permissions. Admin role required.",
-        )
-
-    return token_data

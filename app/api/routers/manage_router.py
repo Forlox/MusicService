@@ -14,6 +14,10 @@ manage_router = APIRouter(
 
 from MusicManager.FileManager import ALLOWED_EXTENSIONS, MUSIC_DIR
 
+
+#TODO
+# Сделать доступ по роли
+# При отсутствии метаданных брать "название, автор, альбом, год"
 @manage_router.post("/add", description="Существование файла проверяет по метаданным: название, автор, альбом, год")
 async def add_music_file(file: UploadFile = File(...)):
     extension = Path(file.filename).suffix.lower()
