@@ -14,7 +14,7 @@ stream_router = APIRouter(
 
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:8000")
 
-@stream_router.get("/{track_id}/url")
+@stream_router.get("/{track_id}/url", description='Получаем ссылку на стрим через bearer токен')
 async def get_stream_url(track_id: int, current_user: dict = Depends(get_current_user)):
     track_path = music.get_track_file_path_by_id(track_id)
     if not track_path:
