@@ -1,6 +1,23 @@
 # Music Service
 Делать нечего, работодатели молчат, поэтому дополняю своё портфолио пет проектом.
 
+## Запуск
+
+- Перейти в виртуальное окружение (пример):
+```sh
+source .venv/bin/activate
+```
+
+- Загрузить зависимости и контейнеры:
+```sh
+pip install requirements.txt
+docker-compose up -d
+```
+
+- Запуск:
+```sh
+python app/main.py
+```
 
 ## Что под капотом?
 - **Python** - весь backend

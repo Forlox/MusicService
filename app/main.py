@@ -24,8 +24,6 @@ def initialize_database():
 # TODO везде сделать логгер и настроить его тут (пример в UserManager)
 # TODO поменять СУБД на Postgres по возможности
 
-# TODO автодобавление ролей из кейклока при первом запуске
-
 def main():
     initialize_database()
     MusicManager().organize_files()
