@@ -9,8 +9,7 @@ playlist_router = APIRouter(prefix="/playlist", tags=["Playlist"])
 async def playlist_create(
     playlist_name: str,
     track_ids: list[int] | None = None,
-    current_user: dict = Depends(get_current_user)
-):
+    current_user: dict = Depends(get_current_user)):
     owner_id = current_user["sub"]
     return playlist.create(playlist_name, owner_id, track_ids)
 

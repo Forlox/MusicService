@@ -42,31 +42,26 @@ class Playlist:
             track_ids = []
 
         if owner_keycloak_id is not None:
-            cursor.execute("SELECT 1 FROM users WHERE keycloak_id = ?", (owner_keycloak_id,))
+            cursor.execute(
+                "SELECT 1 FROM users WHERE keycloak_id = ?",
+                (owner_keycloak_id,)
+            )
             if not cursor.fetchone():
-                raise ValueError(f"Пользователь с keycloak_id {owner_keycloak_id} не найден")
+                return f"Пользователь с keycloak_id {owner_keycloak_id} не найден"
 
-        owners = json.dumps([owner_keycloak_id]) if owner_keycloak_id is not None else '[]'
+        owners = json.dumps([owner_keycloak_id]) if owner_keycloak_id is not None else "[]"
 
-        cursor.execute("INSERT INTO playlists (name, owners) VALUES (?, ?)", (name, owners))
+        cursor.execute(
+            "INSERT INTO playlists (name, owners) VALUES (?, ?)",
+            (name, owners)
+        )
 
         playlist_id = cursor.lastrowid
-
-        for position, track_id in enumerate(track_ids):
-            if track_id == 0:
-                continue
-            # Проверяем существование трека в БД
-            cursor.execute("SELECT 1 FROM tracks WHERE id = ?", (track_id,))
-            if not cursor.fetchone():
-                continue
-
-            cursor.execute("""
-            INSERT INTO playlist_tracks (playlist_id, track_id, position)
-            VALUES (?, ?, ?)
-            """, (playlist_id, track_id, position))
-
         self.sql.commit()
-        return playlist_id
+
+        _, not_added = self.add_tracks(playlist_id, track_ids)
+
+        return playlist_id, not_added
 
     def add_owner(self, playlist_id, owner_keycloak_id):
         cursor = self.sql.cursor()
@@ -102,7 +97,7 @@ class Playlist:
 
         cursor.execute("SELECT id FROM playlists WHERE id = ?", (playlist_id,))
         if not cursor.fetchone():
-            raise ValueError(f"Плейлист с id {playlist_id} не найден")
+            return f"Плейлист с id {playlist_id} не найден"
 
         cursor.execute(
             "SELECT COALESCE(MAX(position), -1) FROM playlist_tracks WHERE playlist_id = ?",
@@ -110,15 +105,35 @@ class Playlist:
         )
         max_pos = cursor.fetchone()[0]
 
-        for i, track_id in enumerate(track_ids):
-            position = max_pos + i + 1
-            cursor.execute("""
-            INSERT OR IGNORE INTO playlist_tracks (playlist_id, track_id, position)
-            VALUES (?, ?, ?)
-            """, (playlist_id, track_id, position))
+        added = 0
+        not_added = []
+
+        for track_id in track_ids:
+            if track_id == 0:
+                continue
+
+            cursor.execute(
+                "SELECT 1 FROM tracks WHERE id = ?",
+                (track_id,)
+            )
+            if not cursor.fetchone():
+                not_added.append(track_id)
+                continue
+
+            max_pos += 1
+            cursor.execute(
+                """
+                INSERT OR IGNORE INTO playlist_tracks (playlist_id, track_id, position)
+                VALUES (?, ?, ?)
+                """,
+                (playlist_id, track_id, max_pos)
+            )
+
+            if cursor.rowcount:
+                added += 1
 
         self.sql.commit()
-        return len(track_ids)
+        return added, not_added
 
     def remove_track(self, playlist_id, track_id):
         cursor = self.sql.cursor()

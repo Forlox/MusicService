@@ -7,31 +7,46 @@ def _get_cursor():
 
 
 def create(name, owner_id=None, track_ids=None):
-    return pl.create(name, owner_id, track_ids)
+    playlist_id, not_added = pl.create(name, owner_id, track_ids)
+
+    return {
+        "playlist_id": playlist_id,
+        "not_added": not_added,
+        "message": (
+            f"Создан плейлист с id: {playlist_id}"
+            if not not_added
+            else f"Создан плейлист с id: {playlist_id}. Не добавлены треки: {not_added}"
+        )
+    }
 
 def delete(playlist_id: int):
-    return pl.delete(playlist_id)
+    return {"message": pl.delete(playlist_id)}
 
 def add_owner(playlist_id, user_id):
-    return pl.add_owner(playlist_id, user_id)
+    return {"added": pl.add_owner(playlist_id, user_id)}
 
 def add_tracks(playlist_id, track_ids):
-    return pl.add_tracks(playlist_id, track_ids)
+    added, not_added = pl.add_tracks(playlist_id, track_ids)
+
+    return {
+        "added": added,
+        "not_added": not_added
+    }
 
 def remove_track(playlist_id, track_id):
-    return pl.remove_track(playlist_id, track_id)
+    return {"removed": pl.remove_track(playlist_id, track_id)}
 
 def rename(playlist_id, new_name):
-    return pl.rename(playlist_id, new_name)
+    return {"renamed": pl.rename(playlist_id, new_name)}
 
 def set_main_owner(playlist_id, user_id):
-    return pl.set_main_owner(playlist_id, user_id)
+    return {"changed": pl.set_main_owner(playlist_id, user_id)}
 
 def get_owners(playlist_id):
-    return pl.get_owners(playlist_id)
+    return {"owners": pl.get_owners(playlist_id)}
 
 def get_main_owner(playlist_id):
-    return pl.get_main_owner(playlist_id)
+    return {"owner": pl.get_main_owner(playlist_id)}
 
 def list_playlists():
     cursor = _get_cursor()

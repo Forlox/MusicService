@@ -6,7 +6,7 @@ from keycloak.exceptions import KeycloakAuthenticationError, KeycloakGetError, K
 from Authentication.Auth import keycloak_admin, keycloak_openid
 from Users.Users import Users
 
-# Настройка логирования (можно вынести в конфиг)
+# Настройка логирования
 logger = logging.getLogger(__name__)
 
 class UserManager:
@@ -98,7 +98,6 @@ class UserManager:
             if email:
                 user_data["email"] = email
                 # Проверяем уникальность email
-                # TODO в кейклоке это настраивается, надо тестить
                 try:
                     existing_email = self.keycloak.get_users({"email": email, "exact": True})
                     if existing_email:

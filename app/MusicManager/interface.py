@@ -37,7 +37,7 @@ def get_tracks_by_author(author):
     """, (author,))
     return [dict(row) for row in cursor.fetchall()]
 
-def search_tracks(query, page=1, page_size=50): # TODO мб ограничить кол-во выданных треков
+def search_tracks(query, page=1, page_size=50):
     """Ищет каждое слово в полях: title, author, album, year"""
     cursor = _get_cursor()
 
