@@ -10,8 +10,9 @@ from MusicManager.Queue import Queue
 from Users.Devices import Devices
 from Users.Users import Users
 from Users.UserManager import UserManager
+from Authentication.Keycloak import configure_basic_scope
 
-import uvicorn, api.api as api
+import uvicorn, api.api as api, os
 
 # Нужно сохранять порядок вызова для sql таблиц
 def initialize_database():
@@ -22,8 +23,10 @@ def initialize_database():
     Queue()
 
 
+
 def main():
     initialize_database()
+    configure_basic_scope()
     MusicManager().organize_files()
     UserManager().sync_all_users()
 

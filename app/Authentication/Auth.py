@@ -33,6 +33,7 @@ bearer_scheme = HTTPBearer()          # Authorization: Bearer <token>
 basic_scheme = HTTPBasic()            # Authorization: Basic <base64>
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),) -> dict:
+    print(KEYCLOAK_CLIENT_ID)
     token = credentials.credentials
     try:
         decoded = keycloak_openid.decode_token(token) # decode_token() автоматически проверяет подпись, issuer, expiration
