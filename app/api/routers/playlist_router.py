@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, dependencies
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from Authentication.Auth import get_current_user, get_admin_user
 import Playlist.interface as playlist
+from Playlist.interface import check_owner_permission
 
-playlist_router = APIRouter(prefix="/playlist", tags=["Playlist"], dependencies=[Depends(get_admin_user)])
+playlist_router = APIRouter(prefix="/playlist", tags=["Playlist"])
 
-#TODO реализовать: пользователи могут управлять только своими плейлистами
+# TODO list работает для всех, но нельзя смотреть треки внутри, мб реализовать приватность плейлистов
 
 @playlist_router.post("/")
 async def playlist_create(
@@ -16,41 +17,72 @@ async def playlist_create(
     return playlist.create(playlist_name, owner_id, track_ids)
 
 @playlist_router.post("/{playlist_id}/owners")
-async def playlist_add_owner(playlist_id: int, user_id: str):
+async def playlist_add_owner(
+    playlist_id: int,
+    user_id: str,
+    current_user: dict = Depends(get_current_user)):
+    check_owner_permission(playlist_id, current_user["sub"])
     return playlist.add_owner(playlist_id, user_id)
 
 @playlist_router.get("/{playlist_id}")
-async def playlist_track_list(playlist_id: int):
+async def playlist_track_list(
+    playlist_id: int,
+    current_user: dict = Depends(get_current_user)):
+    check_owner_permission(playlist_id, current_user["sub"])
     return playlist.track_list(playlist_id)
 
 @playlist_router.post("/{playlist_id}/tracks")
-async def playlist_add_tracks(playlist_id: int, track_ids: list[int]):
+async def playlist_add_tracks(
+    playlist_id: int,
+    track_ids: list[int],
+    current_user: dict = Depends(get_current_user)):
+    check_owner_permission(playlist_id, current_user["sub"])
     return playlist.add_tracks(playlist_id, track_ids)
 
 @playlist_router.delete("/{playlist_id}/tracks")
-async def playlist_remove_track(playlist_id: int, track_id: int):
+async def playlist_remove_track(
+    playlist_id: int,
+    track_id: int,
+    current_user: dict = Depends(get_current_user)):
+    check_owner_permission(playlist_id, current_user["sub"])
     return playlist.remove_track(playlist_id, track_id)
 
 @playlist_router.put("/{playlist_id}")
-async def playlist_rename(playlist_id: int, new_name: str):
+async def playlist_rename(
+    playlist_id: int,
+    new_name: str,
+    current_user: dict = Depends(get_current_user)):
+    check_owner_permission(playlist_id, current_user["sub"])
     return playlist.rename(playlist_id, new_name)
 
 @playlist_router.put("/{playlist_id}/main-owner")
-async def playlist_set_main_owner(playlist_id: int, user_id: str):
+async def playlist_set_main_owner(
+    playlist_id: int,
+    user_id: str,
+    current_user: dict = Depends(get_current_user)):
+    check_owner_permission(playlist_id, current_user["sub"])
     return playlist.set_main_owner(playlist_id, user_id)
 
 @playlist_router.get("/{playlist_id}/owners")
-async def playlist_get_owners(playlist_id: int):
+async def playlist_get_owners(playlist_id: int, current_user: dict = Depends(get_current_user)):
+    check_owner_permission(playlist_id, current_user["sub"])
     return playlist.get_owners(playlist_id)
 
 @playlist_router.get("/{playlist_id}/main-owner")
-async def playlist_get_main_owner(playlist_id: int):
+async def playlist_get_main_owner(
+    playlist_id: int,
+    current_user: dict = Depends(get_current_user)):
+    check_owner_permission(playlist_id, current_user["sub"])
     return playlist.get_main_owner(playlist_id)
 
 @playlist_router.get("/")
-async def playlist_list():
+async def playlist_list(
+    current_user: dict = Depends(get_current_user)):
     return playlist.list_playlists()
 
-@playlist_router.delete("{playlist_id}")
-async def playlist_delete(playlist_id: int):
+@playlist_router.delete("/{playlist_id}")
+async def playlist_delete(
+    playlist_id: int,
+    current_user: dict = Depends(get_current_user)):
+    check_owner_permission(playlist_id, current_user["sub"])
     return playlist.delete(playlist_id)

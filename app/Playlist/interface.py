@@ -1,9 +1,26 @@
+from fastapi import HTTPException, status
 from Playlist.Playlist import Playlist
 
 pl = Playlist()
 _db = Playlist().sql
 def _get_cursor():
     return _db.cursor()
+
+
+def check_owner_permission(playlist_id: int, user_id: str):
+    """Проверяет, является ли пользователь владельцем плейлиста"""
+    try:
+        owners = pl.get_owners(playlist_id)
+        if user_id not in owners:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"User {user_id} is not an owner of playlist {playlist_id}"
+            )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
 
 
 def create(name, owner_id=None, track_ids=None):
