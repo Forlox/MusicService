@@ -21,8 +21,6 @@ def initialize_database():
     Devices()
     Queue()
 
-# TODO везде сделать логгер и настроить его тут (пример в UserManager)
-# TODO поменять СУБД на Postgres по возможности
 
 def main():
     initialize_database()

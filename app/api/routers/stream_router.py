@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, Request, Depends, HTTPException
 
 from MusicManager.StreaminService import stream_file
@@ -11,6 +12,8 @@ stream_router = APIRouter(
     tags=["Streaming"]
 )
 
+BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:8000")
+
 @stream_router.get("/{track_id}/url")
 async def get_stream_url(track_id: int, current_user: dict = Depends(get_current_user)):
     track_path = music.get_track_file_path_by_id(track_id)
@@ -20,7 +23,7 @@ async def get_stream_url(track_id: int, current_user: dict = Depends(get_current
             detail="Track not found"
         )
     token = create_stream_token(current_user["sub"], track_id)
-    return { "url": f"/stream/play/{track_id}?token={token}" }
+    return { "url": f"{BASE_URL}/stream/play/{track_id}?token={token}" }
 
 @stream_router.get("/play/{track_id}")
 async def play_stream(track_id: int, request: Request, token: str):
