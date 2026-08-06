@@ -32,7 +32,7 @@ class UserManager:
             for role_name in required_roles:
                 if role_name not in existing_role_names:
                     try:
-                        self.keycloak.create_realm_role(role_name)
+                        self.keycloak.create_realm_role({"name": role_name,})
                         logger.info(f"Created role '{role_name}' in Keycloak")
                     except KeycloakError as e:
                         logger.error(f"Failed to create role '{role_name}': {e}")

@@ -1,3 +1,5 @@
+import os, time
+from keycloak.exceptions import KeycloakConnectionError
 from Authentication.Auth import keycloak_admin
 
 def configure_basic_scope():
@@ -14,7 +16,6 @@ def configure_basic_scope():
     scope_id = basic_scope["id"]
 
     scope = keycloak_admin.get_client_scope(scope_id)
-
     attributes = scope.get("attributes", {})
 
     if attributes.get("include.in.token.scope") != "true":
@@ -46,3 +47,32 @@ def configure_basic_scope():
                     }
                 )
             break
+
+def configure_token_settings():
+    realm_name = os.getenv("KEYCLOAK_REALM", "master")
+
+    realm = keycloak_admin.get_realm(realm_name)
+
+    if realm.get("accessTokenLifespan") != 300:
+        keycloak_admin.update_realm(
+            realm_name,
+            {
+                "accessTokenLifespan": 300
+            }
+        )
+
+def wait_for_keycloak():
+    while True:
+        try:
+            keycloak_admin.get_realm("master")
+            return
+
+        except KeycloakConnectionError:
+            print("Keycloak недоступен. Попытка повторного подключения через 3 сек")
+            time.sleep(3)
+
+
+def configure_keycloak():
+    wait_for_keycloak()
+    configure_basic_scope()
+    configure_token_settings()

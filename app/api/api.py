@@ -9,13 +9,10 @@ from api.routers.stream_router import stream_router
 
 app = FastAPI()
 
-#TODO настроить права доступа к апи по ролям
-
 # TODO
 #  нужны эндпоинты:
-#  - вся херня для авторизации/регистрации (вроде все)
+#  - публичный для регистрации со всеми проверками
 #  - для очереди воспроизведения
-#  - проверка долгосрочного токена для выкидывания с клиента по истечению времени (мб не надо)
 
 @app.post("/token")
 async def get_token(credentials: HTTPBasicCredentials = Depends(basic_scheme)):

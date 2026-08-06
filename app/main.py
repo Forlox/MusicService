@@ -10,7 +10,7 @@ from MusicManager.Queue import Queue
 from Users.Devices import Devices
 from Users.Users import Users
 from Users.UserManager import UserManager
-from Authentication.Keycloak import configure_basic_scope
+from Authentication.Keycloak import configure_keycloak
 
 import uvicorn, api.api as api, os
 
@@ -26,7 +26,7 @@ def initialize_database():
 
 def main():
     initialize_database()
-    configure_basic_scope()
+    configure_keycloak()
     MusicManager().organize_files()
     UserManager().sync_all_users()
 

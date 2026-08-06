@@ -71,13 +71,18 @@ async def get_current_user_from_basic(credentials: HTTPBasicCredentials = Depend
         )
 
 
-async def get_admin_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),) -> dict:
-    """Только для администраторов. Проверяет токен и наличие роли 'admin'."""
+async def get_admin_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
     token_data = await get_current_user(credentials)
+
+    print("REALM:", token_data.get("realm_access"))
+    print("CLIENT:", token_data.get("resource_access"))
+
     roles = token_data.get("realm_access", {}).get("roles", [])
+
     if "admin" not in roles:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=403,
             detail="Insufficient permissions. Admin role required.",
         )
+
     return token_data
