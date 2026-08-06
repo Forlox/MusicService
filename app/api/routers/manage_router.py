@@ -9,12 +9,12 @@ import MusicManager.interface as music
 manage_router = APIRouter(
     prefix="/tracks",
     tags=["Admin"],
-    # dependencies=[Depends(get_admin_user)]
+    dependencies=[Depends(get_admin_user)]
 )
 
 from MusicManager.FileManager import ALLOWED_EXTENSIONS, MUSIC_DIR
 
-@manage_router.post("/add", description="Существование файла проверяет по метаданным: Название, автор, альбом, год")
+@manage_router.post("/add", description="Существование файла проверяет по метаданным: название, автор, альбом, год")
 async def add_music_file(file: UploadFile = File(...)):
     extension = Path(file.filename).suffix.lower()
 

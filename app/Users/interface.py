@@ -53,6 +53,8 @@ def update_user(user_id: str, current_user: dict,
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Update failed: {str(e)}")
 
+def set_active(keycloak_id: str, current_user: dict, active: bool):
+    return update_user(keycloak_id, current_user, enabled=active)
 
 def delete_user_by_id(user_id: str, current_user: dict) -> dict:
     """Удаляет пользователя. Доступно только администраторам."""

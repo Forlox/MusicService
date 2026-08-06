@@ -1,8 +1,9 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 import MusicManager.interface as music
+from Authentication.Auth import get_current_user, get_admin_user
 
-track_router = APIRouter(prefix="/tracks", tags=["Tracks Public"])
+track_router = APIRouter(prefix="/tracks", tags=["Tracks"], dependencies=[Depends(get_current_user)])
 
 @track_router.get("/search")
 async def search_tracks(query: str):

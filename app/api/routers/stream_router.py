@@ -1,12 +1,15 @@
 from fastapi import APIRouter, Request
+from fastapi import Depends
 
 from MusicManager.StreaminService import stream_file
 import MusicManager.interface as music
+from Authentication.Auth import get_current_user, get_admin_user
 
 
 stream_router = APIRouter(
     prefix="/stream",
-    tags=["Streaming"]
+    tags=["Streaming"],
+    dependencies=[Depends(get_current_user)]
 )
 
 

@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, dependencies
 
-from Authentication.Auth import get_current_user
+from Authentication.Auth import get_current_user, get_admin_user
 import Playlist.interface as playlist
 
-playlist_router = APIRouter(prefix="/playlist", tags=["Playlist"])
+playlist_router = APIRouter(prefix="/playlist", tags=["Playlist"], dependencies=[Depends(get_admin_user)])
+
+#TODO реализовать: пользователи могут управлять только своими плейлистами
 
 @playlist_router.post("/")
 async def playlist_create(

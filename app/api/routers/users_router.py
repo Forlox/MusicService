@@ -3,7 +3,11 @@ from fastapi import APIRouter, Depends
 from Authentication.Auth import get_current_user, get_admin_user
 import Users.interface as users
 
-user_router = APIRouter(prefix="/users", tags=["Users"])
+user_router = APIRouter(
+    prefix="/users",
+    tags=["Users"],
+    dependencies=[Depends(get_admin_user)]
+)
 
 @user_router.get("/me", description='Возвращает данные о пользователе по токену. Так же возвращает список roles')
 async def me(current_user: dict = Depends(get_current_user)):
@@ -16,7 +20,7 @@ async def get_user(user_id: str, current_user: dict = Depends(get_current_user))
 @user_router.put("/{user_id}")
 async def update_user(
     user_id: str,
-    username: str | None = None,
+    username: str | None = None, #TODO автонастройка при первом запуске: возможность изменять такие поля (пока только username не дает менять)
     email: str | None = None,
     first_name: str | None = None,
     last_name: str | None = None,
@@ -32,6 +36,10 @@ async def update_user(
         last_name,
         enabled,
     )
+
+@user_router.put("/{user_id}/active")
+async def set_active(user_id: str, active: bool, current_user: dict = Depends(get_current_user),):
+    return users.set_active(user_id, current_user, active)
 
 @user_router.delete("/{user_id}")
 async def delete_user(user_id: str, admin: dict = Depends(get_admin_user)):

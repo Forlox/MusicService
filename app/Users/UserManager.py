@@ -14,9 +14,34 @@ class UserManager:
         self.keycloak = keycloak_admin
         self.local = Users()
         self.openid = keycloak_openid
+        self._ensure_roles_exist()
+
+    def _ensure_roles_exist(self):
+        """Создает роли в Кейклок если они не существуют."""
+        required_roles = [
+            "listener",
+            "registered",
+            "upload",
+            "manage"
+        ]
+
+        try:
+            existing_roles = self.keycloak.get_realm_roles()
+            existing_role_names = {role["name"] for role in existing_roles}
+
+            for role_name in required_roles:
+                if role_name not in existing_role_names:
+                    try:
+                        self.keycloak.create_realm_role(role_name)
+                        logger.info(f"Created role '{role_name}' in Keycloak")
+                    except KeycloakError as e:
+                        logger.error(f"Failed to create role '{role_name}': {e}")
+
+        except KeycloakError as e:
+            logger.error(f"Failed to get realm roles from Keycloak: {e}")
 
     def _get_local_user_by_keycloak_id(self, keycloak_id: str) -> Optional[Dict]:
-        """Возвращает локального пользователя как словарь или None."""
+        """Возвращает локального пользователя как словарь или None"""
         row = self.local.get_user_by_keycloak_id(keycloak_id)
         if not row:
             return None
@@ -30,7 +55,7 @@ class UserManager:
             logger.error(f"Keycloak get_user failed for {keycloak_id}: {e}")
             return None
 
-    def _sync_single_user(self, keycloak_id: str) -> bool:
+    def sync_single_user(self, keycloak_id: str) -> bool:
         """
         Синхронизирует пользователя: обновляет локальную запись по данным из Keycloak.
         Если пользователь отсутствует в Keycloak – удаляет локально.
@@ -89,7 +114,7 @@ class UserManager:
         try:
             user_data = {
                 "username": username,
-                "enabled": True,
+                "enabled": False,
                 "firstName": first_name,
                 "lastName": last_name,
                 "emailVerified": False,
@@ -132,7 +157,7 @@ class UserManager:
                 keycloak_id=keycloak_id,
                 login=username,
                 is_admin=False,
-                is_active=True
+                is_active=False
             )
             logger.info(f"Created local user for {username}")
         except Exception as e: # Откат: удаляем пользователя из Keycloak
@@ -320,9 +345,6 @@ class UserManager:
         except KeycloakGetError as e:
             logger.error(f"Keycloak get_users failed: {e}")
             raise HTTPException(status_code=500, detail="Keycloak error")
-
-    def sync_user(self, keycloak_id: str) -> bool:
-        return self._sync_single_user(keycloak_id)
 
     def sync_all_users(self) -> Dict[str, int]:
         """
