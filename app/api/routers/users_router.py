@@ -5,8 +5,7 @@ import Users.interface as users
 
 user_router = APIRouter(
     prefix="/users",
-    tags=["Users"],
-    dependencies=[Depends(get_admin_user)]
+    tags=["Users"]
 )
 
 @user_router.get("/me", description='Возвращает данные о пользователе по токену. Так же возвращает список roles')

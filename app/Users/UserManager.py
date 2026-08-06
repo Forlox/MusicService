@@ -174,7 +174,7 @@ class UserManager:
             "email": email,
             "firstName": first_name,
             "lastName": last_name,
-            "enabled": True,
+            "enabled": False,
             "roles": []
         }
 
