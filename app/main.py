@@ -7,7 +7,7 @@ load_dotenv(dotenv_path=dotenv_path)
 from MusicManager.MusicManager import MusicManager, Music_DB_Manager
 from Playlist.Playlist import Playlist
 from MusicManager.Queue import Queue
-from Users.Devices import Devices
+# from Users.Devices import Devices
 from Users.Users import Users
 from Users.UserManager import UserManager
 from Authentication.Keycloak import configure_keycloak
