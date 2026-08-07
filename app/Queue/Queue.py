@@ -209,19 +209,3 @@ class Queue:
             ORDER BY qt.position ASC
         """, (queue_id,))
         return [dict(row) for row in cursor.fetchall()]
-
-    def set_current_track(self, user_id, track_id):
-        queue_id = self._get_queue_id(user_id)
-        self.sql.execute("""
-        UPDATE playback_queue
-        SET current_track_id = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-        """, (track_id, queue_id))
-        self.sql.commit()
-
-    def delete_old_queues(self, days=7):
-        self.sql.execute("""
-        DELETE FROM playback_queue
-        WHERE updated_at < datetime('now', ?)
-        """, (f"-{days} days",))
-        self.sql.commit()
