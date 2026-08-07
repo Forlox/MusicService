@@ -6,13 +6,13 @@ from api.routers.users_router import user_router
 from api.routers.manage_router import manage_router
 from api.routers.playlist_router import playlist_router
 from api.routers.stream_router import stream_router
+from api.routers.queue_router import queue_router
 
 app = FastAPI()
 
 # TODO
 #  нужны эндпоинты:
 #  - публичный для регистрации со всеми проверками
-#  - для очереди воспроизведения
 
 @app.post("/token")
 async def get_token(credentials: HTTPBasicCredentials = Depends(basic_scheme)):
@@ -30,3 +30,4 @@ app.include_router(track_router)
 app.include_router(playlist_router)
 app.include_router(manage_router)
 app.include_router(stream_router)
+app.include_router(queue_router)
