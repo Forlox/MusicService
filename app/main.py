@@ -19,7 +19,7 @@ def initialize_database():
     Users()
     Music_DB_Manager()
     Playlist()
-    Devices()
+    # Devices()
     Queue()
 
 
