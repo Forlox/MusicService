@@ -7,11 +7,28 @@ _db = Playlist().sql
 def _get_cursor():
     return _db.cursor()
 
+def _get_logins(keycloak_ids):
+    """Возвращает {keycloak_id: login} для переданных id"""
+    if not keycloak_ids:
+        return {}
+    cursor = _get_cursor()
+    placeholders = ",".join("?" * len(keycloak_ids))
+    cursor.execute(
+        f"SELECT keycloak_id, login FROM users WHERE keycloak_id IN ({placeholders})",
+        tuple(keycloak_ids),
+    )
+    return {row["keycloak_id"]: row["login"] for row in cursor.fetchall()}
 
-def check_owner_permission(playlist_id: int, user_id: str):
-    """Проверяет, является ли пользователь владельцем плейлиста"""
+def check_owner_permission(playlist_id: int, current_user: dict):
+    """Проверяет, является ли пользователь владельцем плейлиста (кроме админов)"""
     try:
         owners = pl.get_owners(playlist_id)
+        user_id = current_user.get("sub")
+        is_admin = "admin" in current_user.get("realm_access", {}).get("roles", [])
+
+        if is_admin:
+            return
+
         if user_id not in owners:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -61,13 +78,24 @@ def set_main_owner(playlist_id, user_id):
     return {"changed": pl.set_main_owner(playlist_id, user_id)}
 
 def get_owners(playlist_id):
-    return {"owners": pl.get_owners(playlist_id)}
+    owners = pl.get_owners(playlist_id)
+    logins = _get_logins(owners)
+    return {
+        "owners": owners,
+        "owners_logins": [logins.get(user_id) for user_id in owners],
+    }
 
 def get_main_owner(playlist_id):
-    return {"owner": pl.get_main_owner(playlist_id)}
+    owners = pl.get_owners(playlist_id)
+    main_owner = owners[0] if owners else None
+    logins = _get_logins([main_owner]) if main_owner else {}
+    return {
+        "owner": main_owner,
+        "owner_logins": logins.get(main_owner) if main_owner else None,
+    }
 
 def list_playlists(current_user: dict = None):
-    """Возвращает плейлисты. Обычный пользователь видит только свои, админ - все."""
+    """Возвращает плейлисты. Обычный пользователь видит только свои, админ - все"""
     cursor = _get_cursor()
     cursor.execute("""
         SELECT p.id, p.name, p.owners, p.created_at, 
@@ -80,6 +108,14 @@ def list_playlists(current_user: dict = None):
 
     playlists = [dict(row) for row in cursor.fetchall()]
 
+    for pl in playlists:
+        pl["owners"] = json.loads(pl["owners"])
+
+    owner_ids = {uid for pl_ in playlists for uid in pl_["owners"]}
+    logins = _get_logins(list(owner_ids))
+    for pl in playlists:
+        pl["owners_logins"] = [logins.get(uid) for uid in pl["owners"]]
+
     if current_user is None: return playlists
 
     user_id = current_user.get("sub")
@@ -89,7 +125,7 @@ def list_playlists(current_user: dict = None):
 
     return [
         playlist for playlist in playlists
-        if user_id in json.loads(playlist["owners"])
+        if user_id in playlist["owners"]
     ]
 
 def track_list(playlist_id):
