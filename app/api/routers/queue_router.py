@@ -1,7 +1,10 @@
 from fastapi import APIRouter, Depends
+import logging
 
 from Authentication.Auth import get_current_user
 import Queue.interface as queue
+
+logger = logging.getLogger(__name__)
 
 queue_router = APIRouter(prefix="/queue", tags=["Queue"])
 

@@ -1,6 +1,9 @@
 from fastapi import HTTPException, status
 import json
+import logging
 from Playlist.Playlist import Playlist
+
+logger = logging.getLogger(__name__)
 
 pl = Playlist()
 _db = Playlist().sql
@@ -30,6 +33,7 @@ def check_owner_permission(playlist_id: int, current_user: dict):
             return
 
         if user_id not in owners:
+            logger.warning(f"Отказано в доступе: пользователь {user_id} не владелец плейлиста {playlist_id}")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"User {user_id} is not an owner of playlist {playlist_id}"

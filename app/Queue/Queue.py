@@ -1,4 +1,7 @@
 from Database import Database
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Queue:
     def __init__(self):
@@ -51,6 +54,7 @@ class Queue:
 
         cursor.execute("INSERT INTO playback_queue(user_id) VALUES (?)", (user_id,))
         self.sql.commit()
+        logger.debug(f"Создана очередь для пользователя {user_id}")
         return cursor.lastrowid
 
     def _track_exists(self, track_id):
@@ -88,6 +92,7 @@ class Queue:
 
         self._update_time(queue_id)
         self.sql.commit()
+        logger.info(f"Очередь пользователя {user_id} пересоздана: добавлено {len(added)}, не добавлено {len(not_added)}")
         return added, not_added
 
     def add_tracks(self, user_id, track_ids):
@@ -116,6 +121,7 @@ class Queue:
 
         self._update_time(queue_id)
         self.sql.commit()
+        logger.info(f"В очередь пользователя {user_id} добавлено треков: {len(added)}, не добавлено: {len(not_added)}")
         return added, not_added
 
     def add_track(self, user_id, track_id):
@@ -128,6 +134,7 @@ class Queue:
         cursor = self.sql.cursor()
 
         if not self._track_exists(track_id):
+            logger.warning(f"Не удалось вставить трек {track_id}: трек не найден")
             return False
 
         cursor.execute(
@@ -153,12 +160,14 @@ class Queue:
 
         self._update_time(queue_id)
         self.sql.commit()
+        logger.info(f"Трек {track_id} вставлен в очередь {user_id} после позиции {current_position}")
         return True
 
     def remove_track(self, user_id, position):
         """Удаляет трек и сдвигает позиции других."""
         queue_id = self._get_queue_id(user_id, create=False)
         if queue_id is None:
+            logger.debug(f"Очередь пользователя {user_id} не найдена")
             return False
 
         cursor = self.sql.cursor()
@@ -167,6 +176,7 @@ class Queue:
             (queue_id, position)
         )
         if not cursor.fetchone():
+            logger.debug(f"В очереди {user_id} нет трека на позиции {position}")
             return False
 
         cursor.execute(
@@ -180,11 +190,13 @@ class Queue:
 
         self._update_time(queue_id)
         self.sql.commit()
+        logger.info(f"Трек на позиции {position} удален из очереди пользователя {user_id}")
         return True
 
     def clear(self, user_id):
         queue_id = self._get_queue_id(user_id, create=False)
         if queue_id is None:
+            logger.debug(f"Очередь пользователя {user_id} не найдена")
             return False
 
         self.sql.execute("DELETE FROM queue_tracks WHERE queue_id = ?", (queue_id,))
@@ -193,6 +205,7 @@ class Queue:
 
         self._update_time(queue_id)
         self.sql.commit()
+        logger.info(f"Очередь пользователя {user_id} очищена")
         return True
 
     def get_queue(self, user_id):

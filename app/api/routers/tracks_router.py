@@ -1,11 +1,14 @@
 from pathlib import Path
 import shutil
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 
 import MusicManager.interface as music
-from Authentication.Auth import get_current_user, require_roles, require_active_user
+from Authentication.Auth import get_current_user, require_roles, require_active_user, get_admin_user
 from MusicManager.FileManager import ALLOWED_EXTENSIONS, MUSIC_DIR
+
+logger = logging.getLogger(__name__)
 
 track_router = APIRouter(
     prefix="/tracks",
@@ -33,10 +36,6 @@ async def get_author_tracks(author: str):
 async def track_list():
     return music.get_track_list()
 
-@track_router.get('/{track_id}', dependencies=[Depends(require_active_user())])
-async def get_track_file_location(id: int):
-    return music.get_track_file_path_by_id(id)
-
 @track_router.post("/add", dependencies=[Depends(require_roles("upload"))],
                    description="Требует роль upload. Существование файла проверяет по метаданным: название, автор, альбом, год.")
 async def add_music_file(file: UploadFile = File(...)):
@@ -60,11 +59,13 @@ async def add_music_file(file: UploadFile = File(...)):
 
     if not added:
         destination.unlink(missing_ok=True)
+        logger.warning(f"Файл {file.filename} не добавлен (дубликат по метаданным)")
         raise HTTPException(
             status_code=409,
             detail="Такой трек уже существует."
         )
 
+    logger.info(f"Загружен трек: {file.filename}")
     return {
         "message": "Файл успешно загружен.",
         "filename": file.filename
@@ -72,4 +73,6 @@ async def add_music_file(file: UploadFile = File(...)):
 
 @track_router.delete("/{track_id}", dependencies=[Depends(require_roles("manage"))])
 async def delete_track(track_id: int):
-    return {"deleted": music.delete_track_by_id(track_id)}
+    deleted = music.delete_track_by_id(track_id)
+    logger.info(f"Запрос удаления трека {track_id}: {'удален' if deleted else 'не удален'}")
+    return {"deleted": deleted}

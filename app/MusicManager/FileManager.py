@@ -1,5 +1,8 @@
 from pathlib import Path
 import mutagen, shutil, time
+import logging
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_EXTENSIONS = {'.mp3', '.flac', '.wav'}
 MUSIC_DIR = Path(__file__).resolve().parents[1] / "Music"
@@ -31,13 +34,16 @@ class FileManager:
 
     def run(self):
         MUSIC_DIR.mkdir(parents=True, exist_ok=True)
-        for file in scan(MUSIC_DIR):
+        files = scan(MUSIC_DIR)
+        logger.info(f"Сканирование папки MUSIC: найдено {len(files)} файлов")
+        for file in files:
             self.process(file)
 
     def process(self, file):
         data = get_metadata(file)
 
         if not data:
+            logger.warning(f"Не удалось прочитать метаданные файла: {file}")
             return
 
         try:
@@ -60,8 +66,10 @@ class FileManager:
         new_path = folder / file.name
         if file != new_path and not new_path.exists():
             shutil.move(file, new_path)
+            logger.debug(f"Файл перемещен: {file} -> {new_path}")
         elif file != new_path:  # не перезаписываем другой трек с тем же именем.
             new_path = file
+            logger.debug(f"Файл оставлен на месте (уже существует): {file}")
 
         self.tracks.append({
             "title": data.get("title", ["Unknown"])[0],

@@ -1,6 +1,9 @@
 from typing import Optional
 from fastapi import HTTPException
 from Users.UserManager import UserManager
+import logging
+
+logger = logging.getLogger(__name__)
 
 user_manager = UserManager()
 
@@ -10,6 +13,7 @@ def get_current_user_info(current_user: dict) -> dict:
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Ошибка получения данных пользователя {current_user.get('sub')}: {e}")
         raise HTTPException(status_code=500, detail=f"Error getting user info: {str(e)}")
 
 
@@ -61,10 +65,12 @@ def delete_user_by_id(user_id: str, current_user: dict) -> dict:
         raise HTTPException(status_code=403, detail="Admin role required")
     try:
         user_manager.delete_user(user_id)
+        logger.info(f"Пользователь {user_id} удален администратором {current_user.get('sub')}")
         return {"status": "deleted", "user_id": user_id}
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Ошибка удаления пользователя {user_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Deletion failed: {str(e)}")
 
 
@@ -99,6 +105,7 @@ def create_new_user(username: str, password: str,
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Ошибка создания пользователя {username}: {e}")
         raise HTTPException(status_code=500, detail=f"User creation failed: {str(e)}")
 
 def is_admin(user_id: str) -> bool:
@@ -114,6 +121,7 @@ def assign_admin_role(user_id: str, admin_user: dict) -> dict:
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Не удалось назначить роль admin пользователю {user_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to assign admin role: {str(e)}")
 
 def remove_admin_role(user_id: str, admin_user: dict) -> dict:
@@ -126,6 +134,7 @@ def remove_admin_role(user_id: str, admin_user: dict) -> dict:
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Не удалось снять роль admin у пользователя {user_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to remove admin role: {str(e)}")
 
 def list_all_users(admin_user: dict) -> list:

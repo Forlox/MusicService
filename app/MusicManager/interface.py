@@ -1,5 +1,8 @@
 from Database import Database
 from MusicManager.MusicManager import MusicManager
+import logging
+
+logger = logging.getLogger(__name__)
 
 _manager = MusicManager()
 _db = Database()
@@ -97,7 +100,9 @@ def search_tracks(query, page=1, page_size=50):
     """
 
     cursor.execute(query_sql, params + [page_size, offset])
-    return [dict(row) for row in cursor.fetchall()]
+    rows = [dict(row) for row in cursor.fetchall()]
+    logger.debug(f"Поиск '{query}' (стр. {page}): найдено {len(rows)} треков из {total}")
+    return rows
 
 def organize_files(printLogs=False):
     """Организация файлов треков, синхронизация с БД"""
@@ -105,10 +110,13 @@ def organize_files(printLogs=False):
 
 def add_music_file(file, printLogs=False):
     """Один конкретный файл организует по папкам и добавляет в БД"""
-    return _manager.add_music_file(file, printLogs)
+    result = _manager.add_music_file(file, printLogs)
+    logger.info(f"Добавление файла {file}: {'успешно' if result else 'не добавлен'}")
+    return result
 
 def delete_track_by_id(track_id, print_logs=True):
-    return _manager.delete_track(track_id, print_logs)
+    result = _manager.delete_track(track_id, print_logs)
+    return result
 
 def get_track_list():
     cursor = _get_cursor()
@@ -117,6 +125,9 @@ def get_track_list():
 
 def get_track_file_path_by_id(id):
     track = get_track_by_id(id, normalise=False)
+    if not track:
+        logger.warning(f"Запрошен отсутствующий трек: id={id}")
+        return None
     return track['file_path']
 
 if __name__ == "__main__":

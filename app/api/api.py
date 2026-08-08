@@ -6,6 +6,9 @@ from api.routers.users_router import user_router
 from api.routers.playlist_router import playlist_router
 from api.routers.stream_router import stream_router
 from api.routers.queue_router import queue_router
+import logging
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -20,8 +23,10 @@ async def get_token(credentials: HTTPBasicCredentials = Depends(basic_scheme)):
             username=credentials.username,
             password=credentials.password
         )
+        logger.info(f"Выдан токен пользователю {credentials.username}")
         return {"access_token": token["access_token"], "token_type": "bearer"}
     except Exception:
+        logger.warning(f"Неудачная попытка входа пользователя {credentials.username}")
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
 app.include_router(user_router)

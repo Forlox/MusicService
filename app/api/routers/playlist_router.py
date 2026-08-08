@@ -1,8 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+import logging
 
 from Authentication.Auth import get_current_user, require_active_user
 import Playlist.interface as playlist
 from Playlist.interface import check_owner_permission
+
+logger = logging.getLogger(__name__)
 
 playlist_router = APIRouter(prefix="/playlist", tags=["Playlist"], dependencies=[Depends(require_active_user())])
 
@@ -14,6 +17,7 @@ async def playlist_create(
     track_ids: list[int] | None = None,
     current_user: dict = Depends(get_current_user)):
     owner_id = current_user["sub"]
+    logger.info(f"Пользователь {owner_id} создаёт плейлист '{playlist_name}'")
     return playlist.create(playlist_name, owner_id, track_ids)
 
 @playlist_router.post("/{playlist_id}/owners")

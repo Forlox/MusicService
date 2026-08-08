@@ -318,7 +318,7 @@ class UserManager:
         """Возвращает пользователя из Keycloak"""
         kc_user = self._get_keycloak_user(keycloak_id)
         if not kc_user:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=404, detail="User not found") #TODO поломано: при /users/roles дает эту ошибку
 
         roles = keycloak_admin.get_realm_roles_of_user(keycloak_id)
         kc_user["roles"] = [role["name"] for role in roles]

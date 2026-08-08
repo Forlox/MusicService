@@ -1,4 +1,7 @@
 from Database import Database
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Мне лень стало реализовывать функционал для устройст, так что оно лежит мертвым грузом
 class Devices:
@@ -32,6 +35,7 @@ class Devices:
                        (user_id, device_uuid, device_name))
 
         self.sql.commit()
+        logger.info(f"Устройство {device_uuid} добавлено пользователем {user_id}")
 
     def update_last_seen(self, user_id, device_uuid):
         self.sql.execute("""
@@ -57,8 +61,10 @@ class Devices:
         return cursor.fetchall()
 
     def delete_old_devices(self, days=90):
-        self.sql.execute("""
+        cursor = self.sql.cursor()
+        cursor.execute("""
         DELETE FROM devices
         WHERE last_seen < datetime('now', ?)
         """, (f"-{days} days",))
         self.sql.commit()
+        logger.info(f"Удалено неактивных устройств: {cursor.rowcount}")

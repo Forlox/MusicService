@@ -1,16 +1,52 @@
 from fastapi import APIRouter, Depends
+import logging
 
 from Authentication.Auth import get_current_user, get_admin_user
 import Users.interface as users
+
+logger = logging.getLogger(__name__)
 
 user_router = APIRouter(
     prefix="/users",
     tags=["Users"]
 )
 
+# Статические пути объявляются до динамических /{user_id},
+# иначе "/roles", "/sync", "/" матчатся как user_id.
+
 @user_router.get("/me", description='Возвращает данные о пользователе по токену. Так же возвращает список roles')
 async def me(current_user: dict = Depends(get_current_user)):
     return users.get_current_user_info(current_user)
+
+@user_router.get("/roles", description='Возвращает все роли в реалме')
+async def list_roles(admin: dict = Depends(get_admin_user)):
+    return users.list_realm_roles(admin)
+
+@user_router.post("/sync")
+async def sync_users(admin: dict = Depends(get_admin_user)):
+    return users.sync_all_users(admin)
+
+@user_router.post("/")
+async def create_user(
+    username: str,
+    password: str,
+    email: str = "",
+    first_name: str = "",
+    last_name: str = "",
+    admin: dict = Depends(get_admin_user),
+):
+    return users.create_new_user(
+        username,
+        password,
+        email,
+        first_name,
+        last_name,
+        admin,
+    )
+
+@user_router.get("/")
+async def list_users(admin: dict = Depends(get_admin_user)):
+    return users.list_all_users(admin)
 
 @user_router.get("/{user_id}")
 async def get_user(user_id: str, current_user: dict = Depends(get_current_user)):
@@ -38,29 +74,13 @@ async def update_user(
 
 @user_router.put("/{user_id}/active")
 async def set_active(user_id: str, active: bool, current_user: dict = Depends(get_current_user),):
-    return users.set_active(user_id, current_user, active)
+    result = users.set_active(user_id, current_user, active)
+    logger.info(f"Пользователь {user_id} изменен статус active={active}")
+    return result
 
 @user_router.delete("/{user_id}")
 async def delete_user(user_id: str, admin: dict = Depends(get_admin_user)):
     return users.delete_user_by_id(user_id, admin)
-
-@user_router.post("/")
-async def create_user(
-    username: str,
-    password: str,
-    email: str = "",
-    first_name: str = "",
-    last_name: str = "",
-    admin: dict = Depends(get_admin_user),
-):
-    return users.create_new_user(
-        username,
-        password,
-        email,
-        first_name,
-        last_name,
-        admin,
-    )
 
 @user_router.post("/{user_id}/admin")
 async def assign_admin(user_id: str, admin: dict = Depends(get_admin_user)):
@@ -69,18 +89,6 @@ async def assign_admin(user_id: str, admin: dict = Depends(get_admin_user)):
 @user_router.delete("/{user_id}/admin")
 async def remove_admin(user_id: str, admin: dict = Depends(get_admin_user)):
     return users.remove_admin_role(user_id, admin)
-
-@user_router.get("/")
-async def list_users(admin: dict = Depends(get_admin_user)):
-    return users.list_all_users(admin)
-
-@user_router.post("/sync")
-async def sync_users(admin: dict = Depends(get_admin_user)):
-    return users.sync_all_users(admin)
-
-@user_router.get("/roles")
-async def list_roles(admin: dict = Depends(get_admin_user)):
-    return users.list_realm_roles(admin)
 
 @user_router.post("/{user_id}/roles")
 async def assign_role(user_id: str, role: str, admin: dict = Depends(get_admin_user)):

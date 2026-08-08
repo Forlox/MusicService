@@ -1,5 +1,8 @@
 from fastapi import HTTPException, status
 from Queue.Queue import Queue
+import logging
+
+logger = logging.getLogger(__name__)
 
 queue = Queue()
 
@@ -28,6 +31,7 @@ def add_tracks(user_id: str, track_ids: list[int]):
 def add_after_position(user_id: str, track_id: int, current_position: int):
     added = queue.add_after_position(user_id, track_id, current_position)
     if not added:
+        logger.warning(f"Не удалось вставить трек {track_id} в очередь пользователя {user_id}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Трек с id {track_id} не найден"
@@ -37,6 +41,7 @@ def add_after_position(user_id: str, track_id: int, current_position: int):
 def remove_track(user_id: str, position: int):
     removed = queue.remove_track(user_id, position)
     if not removed:
+        logger.warning(f"Не удалось удалить трек на позиции {position} из очереди пользователя {user_id}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"В очереди нет трека на позиции {position}"

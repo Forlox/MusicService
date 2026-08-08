@@ -1,6 +1,9 @@
 import os, time
+import logging
 from keycloak.exceptions import KeycloakConnectionError
 from Authentication.Auth import keycloak_admin, KEYCLOAK_CLIENT_ID
+
+logger = logging.getLogger(__name__)
 
 def configure_basic_scope():
     scopes = keycloak_admin.get_client_scopes()
@@ -11,6 +14,7 @@ def configure_basic_scope():
     )
 
     if not basic_scope:
+        logger.warning("Basic client scope не найден в Keycloak")
         return
 
     scope_id = basic_scope["id"]
@@ -28,6 +32,7 @@ def configure_basic_scope():
                 "attributes": attributes
             }
         )
+        logger.info("Client scope 'basic': include.in.token.scope включен")
 
     mappers = keycloak_admin.get_mappers_from_client_scope(scope_id)
 
@@ -46,6 +51,7 @@ def configure_basic_scope():
                         "config": config
                     }
                 )
+                logger.info("Mapper 'sub': lightweight.claim включен")
             break
 
 def configure_token_settings():
@@ -60,6 +66,7 @@ def configure_token_settings():
                 "accessTokenLifespan": 300
             }
         )
+        logger.info("accessTokenLifespan реалма установлен в 300")
 
 def configure_lightweight_tokens():
     """Отключает lightweight access tokens для клиента приложения.
@@ -81,15 +88,17 @@ def configure_lightweight_tokens():
             "attributes": attributes,
         }
     )
+    logger.info(f"Клиент {KEYCLOAK_CLIENT_ID}: lightweight access token отключен")
 
 def wait_for_keycloak():
     while True:
         try:
             keycloak_admin.get_realm("master")
+            logger.info("Keycloak доступен")
             return
 
         except KeycloakConnectionError:
-            print("Keycloak недоступен. Попытка повторного подключения")
+            logger.warning("Keycloak недоступен. Попытка повторного подключения")
             time.sleep(3)
 
 

@@ -1,5 +1,8 @@
 from Database import Database
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Playlist:
     def __init__(self):
@@ -58,6 +61,7 @@ class Playlist:
 
         playlist_id = cursor.lastrowid
         self.sql.commit()
+        logger.info(f"Создан плейлист: id={playlist_id}, name='{name}'")
 
         _, not_added = self.add_tracks(playlist_id, track_ids)
 
@@ -81,6 +85,7 @@ class Playlist:
         owners = json.loads(row[0])
 
         if owner_keycloak_id in owners:
+            logger.debug(f"Владелец уже есть: playlist={playlist_id}, owner={owner_keycloak_id}")
             return False
 
         owners.append(owner_keycloak_id)
@@ -89,6 +94,7 @@ class Playlist:
             (json.dumps(owners), playlist_id)
         )
         self.sql.commit()
+        logger.info(f"Добавлен владелец {owner_keycloak_id} плейлиста {playlist_id}")
         return True
 
     def add_tracks(self, playlist_id, track_ids):
@@ -133,6 +139,7 @@ class Playlist:
                 added += 1
 
         self.sql.commit()
+        logger.info(f"В плейлист {playlist_id} добавлено треков: {added}, не найдено: {len(not_added)}")
         return added, not_added
 
     def remove_track(self, playlist_id, track_id):
@@ -145,6 +152,7 @@ class Playlist:
         )
         row = cursor.fetchone()
         if not row:
+            logger.debug(f"Трек не найден в плейлисте: playlist={playlist_id}, track={track_id}")
             return False
 
         deleted_position = row[0]
@@ -161,6 +169,7 @@ class Playlist:
         """, (playlist_id, deleted_position))
 
         self.sql.commit()
+        logger.info(f"Трек {track_id} удален из плейлиста {playlist_id}")
         return True
 
     def rename(self, playlist_id, new_name):
@@ -174,6 +183,7 @@ class Playlist:
             raise ValueError(f"Плейлист с id {playlist_id} не найден")
 
         self.sql.commit()
+        logger.info(f"Плейлист {playlist_id} переименован в '{new_name}'")
         return True
 
     def set_main_owner(self, playlist_id, owner_keycloak_id):
@@ -197,6 +207,7 @@ class Playlist:
             (json.dumps(owners), playlist_id)
         )
         self.sql.commit()
+        logger.info(f"Главный владелец плейлиста {playlist_id}: {owner_keycloak_id}")
         return True
 
     def get_owners(self, playlist_id):
@@ -219,6 +230,7 @@ class Playlist:
         row = cursor.fetchone()
 
         if not row:
+            logger.warning(f"Удаление несуществующего плейлиста: id={playlist_id}")
             return f"Плейлист с id {playlist_id} не найден"
 
         playlist_name = row[0]
@@ -228,4 +240,5 @@ class Playlist:
         )
 
         self.sql.commit()
+        logger.info(f"Плейлист '{playlist_name}' (id={playlist_id}) удален")
         return f'Плейлист «{playlist_name}» (id={playlist_id}) успешно удален'

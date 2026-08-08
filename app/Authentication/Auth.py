@@ -42,12 +42,14 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(b
         logger.debug(f"Decoded token: {decoded.keys()}")
         return dict(decoded)
     except KeycloakAuthenticationError:
+        logger.warning("Отклонён запрос с невалидным или просроченным токеном")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
         )
     except Exception as e:
+        logger.error(f"Ошибка аутентификации по токену: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Authentication error: {str(e)}",

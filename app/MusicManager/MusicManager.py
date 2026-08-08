@@ -2,12 +2,16 @@ from MusicManager.FileManager import FileManager
 from Database import Database
 from pathlib import Path
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 class MusicManager:
     def __init__(self):
         self.db = Music_DB_Manager()
         self.file_manager = FileManager()
 
+    # TODO Если начнет нагружать при большом кол-ве треков, то придется оптимизировать (щас оно часто проходит по ВСЕМ трекам)
     def organize_files(self, printLogs=False):
         self.file_manager.run()
 
@@ -15,9 +19,9 @@ class MusicManager:
             add = self.db.add_track(track)
             if printLogs:
                 if add:
-                    print(f"Добавлен в БД: {track['title']} | {track['author']} | {track['album']} | {track['year']} | {track['length']} сек")
+                    logger.info(f"Добавлен в БД: {track['title']} | {track['author']} | {track['album']} | {track['year']} | {track['length']} сек")
                 else:
-                    print(f"Уже существует: {track['title']} | {track['author']} | {track['album']} | {track['year']} | {track['length']} сек")
+                    logger.info(f"Уже существует: {track['title']} | {track['author']} | {track['album']} | {track['year']} | {track['length']} сек")
 
     def add_music_file(self, file_path, printLogs=False):
         from pathlib import Path
@@ -25,13 +29,12 @@ class MusicManager:
 
         if not file_path.exists():
             if printLogs:
-                print(f"Файл не найден: {file_path}")
+                logger.warning(f"Файл не найден: {file_path}")
             return False
 
-        # Проверяем расширение файла
         if file_path.suffix.lower() not in FileManager.EXTENSIONS:
             if printLogs:
-                print(f"Неподдерживаемый формат файла: {file_path.suffix}")
+                logger.warning(f"Неподдерживаемый формат файла: {file_path.suffix}")
             return False
 
         self.file_manager.process(file_path)
@@ -42,16 +45,16 @@ class MusicManager:
 
             if printLogs:
                 if add:
-                    print(
+                    logger.info(
                         f"Добавлен в БД: {track['title']} | {track['author']} | {track['album']} | {track['year']} | {track['length']} сек")
                 else:
-                    print(
+                    logger.info(
                         f"Уже существует: {track['title']} | {track['author']} | {track['album']} | {track['year']} | {track['length']} сек")
 
             return add
         else:
             if printLogs:
-                print(f"Не удалось обработать файл: {file_path}")
+                logger.warning(f"Не удалось обработать файл: {file_path}")
             return False
 
     def delete_track(self, track_id, printLogs=False):
@@ -63,7 +66,7 @@ class MusicManager:
 
             if not track_data:
                 if printLogs:
-                    print(f"Трек с ID {track_id} не найден в базе данных")
+                    logger.warning(f"Трек с ID {track_id} не найден в базе данных")
                 return False
 
             file_path = track_data[0]
@@ -75,25 +78,20 @@ class MusicManager:
                 if file_path_obj.exists():
                     try:
                         os.remove(file_path_obj)
-                        if printLogs:
-                            print(f"Удален файл: {file_path}")
+                        logger.info(f"Удален файл: {file_path}")
                     except (OSError, PermissionError) as e:
-                        if printLogs:
-                            print(f"Ошибка при удалении файла {file_path}: {e}")
+                        logger.error(f"Ошибка при удалении файла {file_path}: {e}")
                         return False
                 else:
-                    if printLogs:
-                        print(f"Файл не найден на диске: {file_path}")
+                    logger.warning(f"Файл не найден на диске: {file_path}")
 
             cursor.execute("DELETE FROM tracks WHERE id = ?", (track_id,))
             self.db.sql.commit()
 
-            if printLogs:
-                print(f"Трек '{title}' | {author} (ID: {track_id}) успешно удален")
+            logger.info(f"Трек '{title}' | {author} (ID: {track_id}) успешно удален")
             return True
         except Exception as e:
-            if printLogs:
-                print(f"Ошибка при удалении трека: {e}")
+            logger.error(f"Ошибка при удалении трека: {e}")
             return False
 
 
@@ -142,6 +140,7 @@ class Music_DB_Manager:
         VALUES (?, ?, ?, ?, ?, ?)
         """, (data["title"], data["author"], data["album"], data["year"], data["file_path"], data["length"]))
         self.sql.commit()
+        logger.debug(f"Добавлен трек в БД: {data['title']}")
         return True
 
 

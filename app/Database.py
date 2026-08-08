@@ -1,4 +1,7 @@
 import sqlite3, os
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Database: # Синглтон для подключения к БД
     instance, connection = None, None
@@ -17,12 +20,14 @@ class Database: # Синглтон для подключения к БД
 
             self.connection.row_factory = sqlite3.Row
             self.connection.execute("PRAGMA foreign_keys = ON")
+            logger.info(f"Подключение к БД открыто: {db_path}")
         return self.connection
 
     def close_connection(self):
         if self.connection:
             self.connection.close()
             self.connection = None
+            logger.info("Подключение к БД закрыто")
 
 def sql_console():
     base_dir = os.path.dirname(os.path.realpath(__file__))
@@ -52,6 +57,7 @@ def sql_console():
                 print("OK")
 
         except Exception as e:
+            logger.error(f"Ошибка SQL: {e}")
             print("Ошибка:", e)
     sql.close()
 

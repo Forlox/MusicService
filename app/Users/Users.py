@@ -1,4 +1,7 @@
 from Database import Database
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Users:
     def __init__(self):
@@ -35,12 +38,14 @@ class Users:
         # Проверяем, нет ли уже такого keycloak_id
         cursor.execute("SELECT id FROM users WHERE keycloak_id = ?", (keycloak_id,))
         if cursor.fetchone():
+            logger.debug(f"Пользователь {keycloak_id} уже существует локально")
             return False  # или выбросить исключение
         cursor.execute("""
             INSERT INTO users (keycloak_id, login, is_admin, is_active)
             VALUES (?, ?, ?, ?)
         """, (keycloak_id, login, int(is_admin), int(is_active)))
         self.sql.commit()
+        logger.info(f"Создана локальная запись пользователя {keycloak_id} (login={login})")
         return True
 
     def update_local_user(self, keycloak_id: str, login: str = None,
@@ -67,6 +72,7 @@ class Users:
     def delete_local_user(self, keycloak_id: str):
         self.sql.execute("DELETE FROM users WHERE keycloak_id = ?", (keycloak_id,))
         self.sql.commit()
+        logger.info(f"Удалена локальная запись пользователя {keycloak_id}")
 
     def update_last_login(self, keycloak_id: str):
         self.sql.execute(
@@ -74,6 +80,7 @@ class Users:
             (keycloak_id,)
         )
         self.sql.commit()
+        logger.debug(f"Обновлено last_login для пользователя {keycloak_id}")
 
 
     def add_user(self, login, is_admin=False):
