@@ -15,6 +15,7 @@ app = FastAPI()
 # TODO
 #  нужны эндпоинты:
 #  - публичный для регистрации со всеми проверками
+#  - настройка стриминга/скачивания в разных форматах сжатия
 
 @app.post("/token")
 async def get_token(credentials: HTTPBasicCredentials = Depends(basic_scheme)):
