@@ -11,6 +11,8 @@ source .venv/bin/activate
 - Загрузить зависимости и контейнеры:
 ```sh
 pip install requirements.txt
+```
+```sh
 docker-compose up -d
 ```
 
