@@ -1,6 +1,6 @@
-fastapi~=0.139.2
-uvicorn~=0.51.0
-python-dotenv~=1.2.2
+fastapi
+uvicorn
+python-dotenv
 python-keycloak
 python-multipart
-mutagen~=1.48.1
+mutagen

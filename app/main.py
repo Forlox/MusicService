@@ -29,16 +29,11 @@ def initialize_database():
 
 
 def main():
-    configure_logging()
-    logger.info("Запуск Music Service")
-    initialize_database()
-    logger.info("База данных инициализирована")
-    configure_keycloak()
-    logger.info("Keycloak настроен")
-    MusicManager().organize_files()
-    logger.info("Музыкальные файлы организованы")
-    UserManager().sync_all_users()
-    logger.info("Пользователи синхронизированы")
+    configure_logging();    logger.info("Запуск Music Service")
+    initialize_database();    logger.info("База данных инициализирована")
+    configure_keycloak();    logger.info("Keycloak настроен")
+    MusicManager().organize_files();    logger.info("Музыкальные файлы организованы")
+    UserManager().sync_all_users();    logger.info("Пользователи синхронизированы")
 
 if __name__ == "__main__":
     main()

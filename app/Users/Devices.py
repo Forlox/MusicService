@@ -3,7 +3,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Мне лень стало реализовывать функционал для устройст, так что оно лежит мертвым грузом
+# Мне лень стало реализовывать функционал для устройств, так что оно лежит мертвым грузом
 class Devices:
     def __init__(self):
         self.sql = Database().sql_connect()
