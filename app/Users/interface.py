@@ -5,7 +5,6 @@ from Users.UserManager import UserManager
 user_manager = UserManager()
 
 def get_current_user_info(current_user: dict) -> dict:
-    """Возвращает информацию о текущем авторизованном пользователе."""
     try:
         return user_manager.get_user(current_user["sub"])
     except HTTPException:
@@ -57,11 +56,9 @@ def set_active(keycloak_id: str, current_user: dict, active: bool):
     return update_user(keycloak_id, current_user, enabled=active)
 
 def delete_user_by_id(user_id: str, current_user: dict) -> dict:
-    """Удаляет пользователя. Доступно только администраторам."""
     roles = current_user.get("realm_access", {}).get("roles", [])
     if "admin" not in roles:
         raise HTTPException(status_code=403, detail="Admin role required")
-
     try:
         user_manager.delete_user(user_id)
         return {"status": "deleted", "user_id": user_id}
@@ -132,7 +129,6 @@ def remove_admin_role(user_id: str, admin_user: dict) -> dict:
         raise HTTPException(status_code=500, detail=f"Failed to remove admin role: {str(e)}")
 
 def list_all_users(admin_user: dict) -> list:
-    """Возвращает список всех пользователей (из Keycloak)"""
     try:
         return user_manager.get_all_users()
     except HTTPException:
@@ -141,10 +137,36 @@ def list_all_users(admin_user: dict) -> list:
         raise HTTPException(status_code=500, detail=f"Failed to get users list: {str(e)}")
 
 def sync_all_users(admin_user: dict) -> dict:
-    """Полная синхронизация локальной БД с Keycloak"""
+    """Синхронизация локальной БД с Keycloak"""
     try:
         return user_manager.sync_all_users()
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Sync failed: {str(e)}")
+
+def list_realm_roles(admin_user: dict) -> list:
+    try:
+        return user_manager.list_realm_roles()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get roles: {str(e)}")
+
+def assign_realm_role(user_id: str, role: str, admin_user: dict) -> dict:
+    try:
+        status = user_manager.assign_role(user_id, role)
+        return {"user_id": user_id, "role": role, "status": status}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to assign role: {str(e)}")
+
+def remove_realm_role(user_id: str, role: str, admin_user: dict) -> dict:
+    try:
+        status = user_manager.remove_role(user_id, role)
+        return {"user_id": user_id, "role": role, "status": status}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to remove role: {str(e)}")

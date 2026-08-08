@@ -77,3 +77,15 @@ async def list_users(admin: dict = Depends(get_admin_user)):
 @user_router.post("/sync")
 async def sync_users(admin: dict = Depends(get_admin_user)):
     return users.sync_all_users(admin)
+
+@user_router.get("/roles")
+async def list_roles(admin: dict = Depends(get_admin_user)):
+    return users.list_realm_roles(admin)
+
+@user_router.post("/{user_id}/roles")
+async def assign_role(user_id: str, role: str, admin: dict = Depends(get_admin_user)):
+    return users.assign_realm_role(user_id, role, admin)
+
+@user_router.delete("/{user_id}/roles")
+async def remove_role(user_id: str, role: str, admin: dict = Depends(get_admin_user)):
+    return users.remove_realm_role(user_id, role, admin)

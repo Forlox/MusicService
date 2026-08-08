@@ -1,4 +1,5 @@
 from fastapi import HTTPException, status
+import json
 from Playlist.Playlist import Playlist
 
 pl = Playlist()
@@ -65,7 +66,8 @@ def get_owners(playlist_id):
 def get_main_owner(playlist_id):
     return {"owner": pl.get_main_owner(playlist_id)}
 
-def list_playlists():
+def list_playlists(current_user: dict = None):
+    """Возвращает плейлисты. Обычный пользователь видит только свои, админ - все."""
     cursor = _get_cursor()
     cursor.execute("""
         SELECT p.id, p.name, p.owners, p.created_at, 
@@ -75,7 +77,20 @@ def list_playlists():
         GROUP BY p.id, p.name, p.owners, p.created_at
         ORDER BY p.created_at DESC
     """)
-    return [dict(row) for row in cursor.fetchall()]
+
+    playlists = [dict(row) for row in cursor.fetchall()]
+
+    if current_user is None: return playlists
+
+    user_id = current_user.get("sub")
+    is_admin = "admin" in current_user.get("realm_access", {}).get("roles", [])
+
+    if is_admin: return playlists
+
+    return [
+        playlist for playlist in playlists
+        if user_id in json.loads(playlist["owners"])
+    ]
 
 def track_list(playlist_id):
     cursor = _get_cursor()

@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from Authentication.Auth import get_current_user, get_admin_user
+from Authentication.Auth import get_current_user, require_active_user
 import Playlist.interface as playlist
 from Playlist.interface import check_owner_permission
 
-playlist_router = APIRouter(prefix="/playlist", tags=["Playlist"])
+playlist_router = APIRouter(prefix="/playlist", tags=["Playlist"], dependencies=[Depends(require_active_user())])
 
-# TODO list работает для всех, но нельзя смотреть треки внутри, мб реализовать приватность плейлистов
+# TODO мб реализовать публичность плейлистов
 
 @playlist_router.post("/")
 async def playlist_create(
@@ -78,7 +78,7 @@ async def playlist_get_main_owner(
 @playlist_router.get("/")
 async def playlist_list(
     current_user: dict = Depends(get_current_user)):
-    return playlist.list_playlists()
+    return playlist.list_playlists(current_user)
 
 @playlist_router.delete("/{playlist_id}")
 async def playlist_delete(

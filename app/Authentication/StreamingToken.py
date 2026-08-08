@@ -2,17 +2,13 @@ import secrets
 import time
 
 tokens = {}
-TOKEN_LIFETIME = 300
-
-def create_stream_token(user_id: str, track_id: int):
+def create_stream_token(user_id: str, track_id: int, token_lifetime=600):
     token = secrets.token_urlsafe(32)
-
     tokens[token] = {
         "user_id": user_id,
         "track_id": track_id,
-        "expires": time.time() + TOKEN_LIFETIME
+        "expires": time.time() + token_lifetime
     }
-
     return token
 
 

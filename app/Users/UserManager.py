@@ -9,6 +9,13 @@ from Users.Users import Users
 # Настройка логирования
 logger = logging.getLogger(__name__)
 
+ROLE_DESCRIPTIONS = {
+    "upload": "Загрузка новых треков в библиотеку",
+    "manage": "Управление музыкальной библиотекой (удаление треков)",
+    "admin": "Полный доступ и администрирование сервиса",
+}
+
+
 class UserManager:
     def __init__(self):
         self.keycloak = keycloak_admin
@@ -17,10 +24,8 @@ class UserManager:
         self._ensure_roles_exist()
 
     def _ensure_roles_exist(self):
-        """Создает роли в Кейклок если они не существуют."""
+        """Создает роли в Кейклок если их нет"""
         required_roles = [
-            "listener",
-            "registered",
             "upload",
             "manage"
         ]
@@ -32,7 +37,10 @@ class UserManager:
             for role_name in required_roles:
                 if role_name not in existing_role_names:
                     try:
-                        self.keycloak.create_realm_role({"name": role_name,})
+                        role_payload = {"name": role_name}
+                        if ROLE_DESCRIPTIONS.get(role_name):
+                            role_payload["description"] = ROLE_DESCRIPTIONS[role_name]
+                        self.keycloak.create_realm_role(role_payload)
                         logger.info(f"Created role '{role_name}' in Keycloak")
                     except KeycloakError as e:
                         logger.error(f"Failed to create role '{role_name}': {e}")
@@ -94,9 +102,7 @@ class UserManager:
         return True
 
     def create_user(self, username: str, password: str, email: str = "", first_name: str = "", last_name: str = "") -> Dict:
-        """Создаёт пользователя в Keycloak и локальной БД.
-        Выбрасывает HTTPException при ошибке.
-        """
+        """Создаёт пользователя в Keycloak и локальной БД"""
         if not username or not password:
             raise HTTPException(status_code=400, detail="Username and password are required")
         if len(password) < 6:
@@ -230,7 +236,7 @@ class UserManager:
         return updated or {}
 
     def delete_user(self, keycloak_id: str) -> None:
-        """Удаляет пользователя из Keycloak и БД."""
+        """Удаляет пользователя из Keycloak и БД"""
         kc_user = self._get_keycloak_user(keycloak_id)
         if not kc_user:
             raise HTTPException(status_code=404, detail="User not found in Keycloak")
@@ -253,7 +259,6 @@ class UserManager:
             # raise HTTPException(status_code=500, detail="Local database error")
 
     def is_admin(self, keycloak_id: str) -> bool:
-        """Проверяет, есть ли у пользователя роль admin в Keycloak"""
         try:
             user_roles = self.keycloak.get_realm_roles_of_user(keycloak_id)
             return any(role.get("name") == "admin" for role in user_roles)
@@ -262,7 +267,7 @@ class UserManager:
             raise HTTPException(status_code=500, detail="Keycloak error")
 
     def assign_admin_role(self, keycloak_id: str) -> None:
-        """Назначает пользователю роль admin в Keycloak и обновляет локальный is_admin"""
+        """Назначает пользователю роль admin в Keycloak и обновляет is_admin в БД"""
         try:
             realm_roles = self.keycloak.get_realm_roles()
             admin_role = next((r for r in realm_roles if r["name"] == "admin"), None)
@@ -289,7 +294,6 @@ class UserManager:
             # Не откатываем Keycloak, но логируем
 
     def remove_admin_role(self, keycloak_id: str) -> None:
-        """Снимает с пользователя роль admin в Keycloak и обновляет локальный is_admin."""
         try:
             # Получаем роли пользователя
             user_roles = self.keycloak.get_realm_roles_of_user(keycloak_id)
@@ -339,7 +343,7 @@ class UserManager:
             raise HTTPException(status_code=500, detail="Keycloak error")
 
     def get_all_users(self) -> List[Dict]:
-        """Возвращает всех пользователей из Keycloak."""
+        """Возвращает всех пользователей из Keycloak"""
         try:
             return self.keycloak.get_users()
         except KeycloakGetError as e:
@@ -401,8 +405,97 @@ class UserManager:
         return stats
 
     def update_last_login(self, keycloak_id: str) -> None:
-        """Обновляет время последнего входа в локальной БД."""
+        """Обновляет время последнего входа в БД"""
         try:
             self.local.update_last_login(keycloak_id)
         except Exception as e:
             logger.error(f"Failed to update last_login for {keycloak_id}: {e}")
+
+    # - Управление ролями -
+
+    def list_realm_roles(self) -> List[Dict]:
+        """Возвращает роли в реалме с описанием"""
+        try:
+            roles = self.keycloak.get_realm_roles()
+        except KeycloakError as e:
+            logger.error(f"Keycloak get_realm_roles failed: {e}")
+            raise HTTPException(status_code=500, detail="Keycloak error")
+
+        return [
+            {
+                "id": role.get("id"),
+                "name": role.get("name"),
+                "description": role.get("description") or ROLE_DESCRIPTIONS.get(role.get("name"), ""),
+                "composite": role.get("composite", False),
+            }
+            for role in roles
+        ]
+
+    def _find_realm_role(self, role_name: str) -> Optional[Dict]:
+        try:
+            roles = self.keycloak.get_realm_roles()
+        except KeycloakError as e:
+            logger.error(f"Keycloak get_realm_roles failed: {e}")
+            raise HTTPException(status_code=500, detail="Keycloak error")
+
+        role = next((r for r in roles if r["name"] == role_name), None)
+        if not role:
+            raise HTTPException(status_code=404, detail=f"Role '{role_name}' not found in realm")
+        return role
+
+    def assign_role(self, keycloak_id: str, role_name: str) -> str:
+        """Назначает пользователю роль в реалме. Возвращает 'added' или 'already'."""
+        role = self._find_realm_role(role_name)
+
+        try:
+            user_roles = self.keycloak.get_realm_roles_of_user(keycloak_id)
+        except KeycloakError as e:
+            logger.error(f"Keycloak get_realm_roles_of_user failed for {keycloak_id}: {e}")
+            raise HTTPException(status_code=500, detail="Keycloak error")
+
+        if any(r.get("name") == role_name for r in user_roles):
+            return "already"
+
+        try:
+            self.keycloak.assign_realm_roles(user_id=keycloak_id, roles=[role])
+            logger.info(f"Assigned role '{role_name}' to {keycloak_id}")
+        except KeycloakError as e:
+            logger.error(f"Keycloak assign_realm_roles failed: {e}")
+            raise HTTPException(status_code=400, detail=f"Keycloak error: {str(e)}")
+
+        if role_name == "admin":
+            try:
+                self.local.update_local_user(keycloak_id, is_admin=True)
+            except Exception as e:
+                logger.error(f"Local update admin flag failed: {e}")
+
+        return "added"
+
+    def remove_role(self, keycloak_id: str, role_name: str) -> str:
+        """Снимает с пользователя роль в реалме. Возвращает 'removed' или 'already'."""
+        self._find_realm_role(role_name)
+
+        try:
+            user_roles = self.keycloak.get_realm_roles_of_user(keycloak_id)
+            role = next((r for r in user_roles if r.get("name") == role_name), None)
+        except KeycloakError as e:
+            logger.error(f"Keycloak get_realm_roles_of_user failed for {keycloak_id}: {e}")
+            raise HTTPException(status_code=500, detail="Keycloak error")
+
+        if not role:
+            return "already"
+
+        try:
+            self.keycloak.delete_realm_roles_of_user(user_id=keycloak_id, roles=[role])
+            logger.info(f"Removed role '{role_name}' from {keycloak_id}")
+        except KeycloakError as e:
+            logger.error(f"Keycloak delete_realm_roles_of_user failed: {e}")
+            raise HTTPException(status_code=400, detail=f"Keycloak error: {str(e)}")
+
+        if role_name == "admin":
+            try:
+                self.local.update_local_user(keycloak_id, is_admin=False)
+            except Exception as e:
+                logger.error(f"Local update admin flag failed: {e}")
+
+        return "removed"

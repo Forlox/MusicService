@@ -56,29 +56,64 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(b
 
 async def get_admin_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
     token_data = await get_current_user(credentials)
-
-    # Получаем роли из realm
-    realm_roles = token_data.get("realm_access", {}).get("roles", [])
-
-    # Получаем роли клиента (если есть)
-    client_roles = token_data.get("resource_access", {}).get(KEYCLOAK_CLIENT_ID, {}).get("roles", [])
-
-    # Объединяем все роли
-    all_roles = realm_roles + client_roles
-
-    logger.debug(f"User roles: {all_roles}")
-
-    if "admin" not in all_roles:
+    if not has_role(token_data, "admin"):
         raise HTTPException(
             status_code=403,
-            detail=f"Insufficient permissions. Admin role required. Current roles: {all_roles}",
+            detail=f"Insufficient permissions. Admin role required. Current roles: {get_user_roles(token_data)}",
         )
-
     return token_data
 
 
+def get_user_roles(token_data: dict) -> list:
+    """Возвращает все роли пользователя из токена (realm + client)."""
+    realm_roles = token_data.get("realm_access", {}).get("roles", [])
+    client_roles = token_data.get("resource_access", {}).get(KEYCLOAK_CLIENT_ID, {}).get("roles", [])
+    return list(set(realm_roles + client_roles))
+
+def has_role(token_data: dict, role: str) -> bool:
+    return role in get_user_roles(token_data)
+
+def require_roles(*roles: str):
+    """Фабрика зависимости: пропускает пользователей, имеющих хотя бы одну из указанных ролей."""
+    async def checker(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
+        token_data = await get_current_user(credentials)
+
+        if "admin" in roles or has_role(token_data, "admin"):
+            return token_data
+
+        if any(has_role(token_data, role) for role in roles):
+            return token_data
+
+        raise HTTPException(
+            status_code=403,
+            detail=f"Insufficient permissions. Required roles: {', '.join(roles)}. Current roles: {get_user_roles(token_data)}",
+        )
+
+    return checker
+
+def _is_user_activated(user_id: str) -> bool:
+    from Users.Users import Users
+    user = Users().get_user_by_keycloak_id(user_id)
+    return bool(user and user["is_active"])
+
+def require_active_user():
+    """Фабрика зависимости: пропускает только активированных пользователей и админов."""
+    async def checker(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
+        token_data = await get_current_user(credentials)
+
+        if has_role(token_data, "admin"):
+            return token_data
+
+        if not _is_user_activated(token_data.get("sub")):
+            raise HTTPException(
+                status_code=403,
+                detail="Account is not activated.",
+            )
+        return token_data
+    return checker
+
 async def get_current_user_from_basic(credentials: HTTPBasicCredentials = Depends(basic_scheme), ) -> dict:
-    """Аутентификация по логину/паролю (HTTP Basic)."""
+    """Аутентификация по логину/паролю (HTTP Basic)"""
     try:
         token = keycloak_openid.token(
             username=credentials.username,
